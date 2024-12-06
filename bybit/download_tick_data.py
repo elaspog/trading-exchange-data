@@ -121,7 +121,7 @@ def main():
 		u.create_local_folder(ticker_folder_path)
 
 		details = get_csv_details(BASE_URL + ticker + '/')
-		for file_idx, detail in enumerate(details):
+		for file_idx, detail in enumerate(reversed(details)):
 			print(f'\t[{file_idx+1}/{len(details)}] ', end='')
 			handle_download(ticker_folder_path, detail['file'], detail['url'])
 

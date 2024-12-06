@@ -47,7 +47,7 @@ python bybit/download_tick_data.py -t BTCUSDT ETHUSDT --output_directory_path DA
 ```
 
 
-## ByBit data converter (from CSV to Parquet)
+## ByBit tick data converter (from CSV to Parquet)
 
 ```sh
 python bybit/convert_tick_data_csv2parquet.py -t BTCUSDT ETHUSDT
@@ -57,4 +57,27 @@ python bybit/convert_tick_data_csv2parquet.py --tickers BTCUSDT ETHUSDT
 ```sh
 python bybit/convert_tick_data_csv2parquet.py -t BTCUSDT ETHUSDT -i DATA/1-DOWNLOADS -o DATA/2-CONVERTED
 python bybit/convert_tick_data_csv2parquet.py -t BTCUSDT ETHUSDT --input_directory_path DATA/1-DOWNLOADS --output_directory_path DATA/2-CONVERTED
+```
+
+## ByBit tick data preprocessor
+
+```sh
+python bybit/join_and_format_tick_data.py -t BTCUSDT ETHUSDT -f csv
+python bybit/join_and_format_tick_data.py -t BTCUSDT ETHUSDT -f parquet
+python bybit/join_and_format_tick_data.py -t BTCUSDT ETHUSDT --filters csv
+python bybit/join_and_format_tick_data.py -t BTCUSDT ETHUSDT --filters parquet
+```
+
+```sh
+python bybit/join_and_format_tick_data.py -t BTCUSDT ETHUSDT -e csv
+python bybit/join_and_format_tick_data.py -t BTCUSDT ETHUSDT -e parquet
+python bybit/join_and_format_tick_data.py -t BTCUSDT ETHUSDT -e csv parquet
+python bybit/join_and_format_tick_data.py -t BTCUSDT ETHUSDT --exports csv
+python bybit/join_and_format_tick_data.py -t BTCUSDT ETHUSDT --exports parquet
+python bybit/join_and_format_tick_data.py -t BTCUSDT ETHUSDT --exports csv parquet
+```
+
+```sh
+python bybit/join_and_format_tick_data.py -t BTCUSDT ETHUSDT -i DATA/1-RAW_TICK -o DATA/2-PREPROCESSED
+python bybit/join_and_format_tick_data.py -t BTCUSDT ETHUSDT --input_directory_path DATA/1-RAW_TICK --output_directory_path DATA/2-PREPROCESSED
 ```

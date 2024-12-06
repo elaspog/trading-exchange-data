@@ -51,7 +51,10 @@ def main():
 		print(f'\tFound files: {len(csv_file_paths)}')
 
 		for csv_file_path in csv_file_paths:
-			parquet_file_path = os.path.join(args.output_directory_path, os.path.basename(csv_file_path).replace('.csv', '.parquet'))
+			parquet_directory_path = os.path.join(args.output_directory_path, ticker)
+			parquet_file_path      = os.path.join(parquet_directory_path, os.path.basename(csv_file_path).replace('.csv', '.parquet'))
+
+			dp.create_local_folder(parquet_directory_path)
 
 			df = pl.read_csv(csv_file_path, infer_schema=False)
 			df.write_parquet(parquet_file_path)

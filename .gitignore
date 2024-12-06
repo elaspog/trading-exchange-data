@@ -1,0 +1,8 @@
+.*/
+.venv/
+
+**/.python-version
+
+**/*.pyc
+**/*.csv
+**/*.parquet

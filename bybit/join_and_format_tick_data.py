@@ -124,14 +124,9 @@ def main():
 	import_args = u.parse_supported_file_format_arguments(u.ALLOWED_FORMATS, args.filter, 'parquet')
 	export_args = u.parse_supported_file_format_arguments(u.ALLOWED_FORMATS, args.exports, 'parquet')
 
-	import_args = [extension for extension, is_allowed in import_args.items() if is_allowed]
-	if len(import_args) > 1:
-		print(f'Only one import format is allowed: {" or ".join(u.ALLOWED_FORMATS)}')
-		return
-
 	input_directory_paths = {}
 	if args.input_directory_path:
-		input_directory_paths['_']       = args.output_directory_path
+		input_directory_paths['_']       = args.input_directory_path
 	else:
 		input_directory_paths['csv']     = os.path.join(REPO_ROOT_DIRECTORY_PATH, dc.BASE_DIRECTORY__DATA, dc.DIRECTORY_NAME__TICK_CSV)
 		input_directory_paths['parquet'] = os.path.join(REPO_ROOT_DIRECTORY_PATH, dc.BASE_DIRECTORY__DATA, dc.DIRECTORY_NAME__TICK_PARQUET)
@@ -145,7 +140,13 @@ def main():
 		if export_args['parquet']:
 			output_directory_paths['parquet'] = os.path.join(REPO_ROOT_DIRECTORY_PATH, dc.BASE_DIRECTORY__DATA, dc.DIRECTORY_NAME__PREP_PARQUET)
 
-	missing_input_directories = [input_directory_path for input_directory_path in input_directory_paths.values() if not u.file_exists(input_directory_path)]
+	import_args = [extension for extension, is_allowed in import_args.items() if is_allowed]
+	if len(import_args) > 1:
+		print(f'Only one import format is allowed: {" or ".join(u.ALLOWED_FORMATS)}')
+		return
+
+	input_directory_paths     = {k: v for k, v in input_directory_paths.items() if k in import_args or k == '_'}
+	missing_input_directories = [input_directory_path for extension, input_directory_path in input_directory_paths.items() if not u.file_exists(input_directory_path)]
 	if missing_input_directories:
 		print(f'Input directories are missing:\n\t{"\n\t".join(missing_input_directories)}')
 		return
@@ -153,30 +154,36 @@ def main():
 	print(f'input directory : \n\t{"\n\t".join(input_directory_paths.values())}')
 	print(f'output directory: \n\t{"\n\t".join(output_directory_paths.values())}')
 
-	print()
 	for idx, process_data in enumerate(itertools.product(args.tickers, [input_directory_paths], [output_directory_paths])):
 		ticker, input_paths, output_paths = process_data
 
-		print(f'[{idx+1}/{len(args.tickers)}] Processing {ticker=}.')
+		print(f'\n[{idx+1}/{len(args.tickers)}] Processing {ticker=}.')
 
-		csv_file_paths     = u.read_file_paths_by_extension(input_paths.get('csv', input_paths.get('_')), ticker, '*.csv')
-		parquet_file_paths = u.read_file_paths_by_extension(input_paths.get('parquet', input_paths.get('_')), ticker, '*.parquet')
+		if 'csv' in import_args:
+			csv_file_paths     = u.read_file_paths_by_extension(input_paths.get('csv', input_paths.get('_')), ticker, '*.csv')
 
-		if not csv_file_paths and not parquet_file_paths:
-			print(f'\tNo input file was found')
-			return
+			if csv_file_paths:
+				print(f'\tCSV files     : {len(csv_file_paths)}')
+				df, min_date, max_date = process_dataframes(csv_file_paths, ticker, 'csv')
+				date_info              = f'{min_date}_{len(csv_file_paths)}_{max_date}'.replace('-', '')
+				write_files(ticker, df, date_info, export_args, output_paths)
 
-		if csv_file_paths and 'csv' in import_args:
-			print(f'\tCSV files     : {len(csv_file_paths)}')
-			df, min_date, max_date = process_dataframes(csv_file_paths, ticker, 'csv')
-			date_info              = f'{min_date}_{len(csv_file_paths)}_{max_date}'.replace('-', '')
-			write_files(ticker, df, date_info, export_args, output_paths)
+			else:
+				print(f'\tNo input CSV files were found')
+				return
 
-		if parquet_file_paths and 'parquet' in import_args:
-			print(f'\tParquet files : {len(parquet_file_paths)}')
-			df, min_date, max_date = process_dataframes(parquet_file_paths, ticker, 'parquet')
-			date_info              = f'{min_date}_{len(parquet_file_paths)}_{max_date}'.replace('-', '')
-			write_files(ticker, df, date_info, export_args, output_paths)
+		if 'parquet' in import_args:
+			parquet_file_paths = u.read_file_paths_by_extension(input_paths.get('parquet', input_paths.get('_')), ticker, '*.parquet')
+
+			if parquet_file_paths:
+				print(f'\tParquet files : {len(parquet_file_paths)}')
+				df, min_date, max_date = process_dataframes(parquet_file_paths, ticker, 'parquet')
+				date_info              = f'{min_date}_{len(parquet_file_paths)}_{max_date}'.replace('-', '')
+				write_files(ticker, df, date_info, export_args, output_paths)
+
+			else:
+				print(f'\tNo input Parquet files were found')
+				return
 
 
 main()

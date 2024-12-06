@@ -23,8 +23,7 @@ source .wenv/Scripts/activate
 Install requirements
 ```sh
 python -m pip install --upgrade pip
-python -m pip install -r bybit/requirements.downloader.txt
-python -m pip install -r bybit/requirements.converter.txt
+python -m pip install -r bybit/requirements.txt
 ```
 
 ## ByBit data downloader

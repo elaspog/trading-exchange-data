@@ -12,7 +12,7 @@ REPO_ROOT_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__
 sys.path.append(REPO_ROOT_DIRECTORY_PATH)
 
 import data_config as dc
-import data_paths as dp
+import utils as u
 
 
 def main():
@@ -42,19 +42,19 @@ def main():
 
 	print(f'input directory  : {args.input_directory_path}')
 	print(f'output directory : {args.output_directory_path}')
-	dp.create_local_folder(args.output_directory_path)
+	u.create_local_folder(args.output_directory_path)
 
 	for ticker_idx, ticker in enumerate(args.tickers):
 		print(f'[{ticker_idx+1}/{len(args.tickers)}] Processing {ticker=}.')
 
-		csv_file_paths = dp.read_file_paths_by_extension(args.input_directory_path, ticker, '*.csv')
+		csv_file_paths = u.read_file_paths_by_extension(args.input_directory_path, ticker, '*.csv')
 		print(f'\tFound files: {len(csv_file_paths)}')
 
 		for csv_file_path in csv_file_paths:
 			parquet_directory_path = os.path.join(args.output_directory_path, ticker)
 			parquet_file_path      = os.path.join(parquet_directory_path, os.path.basename(csv_file_path).replace('.csv', '.parquet'))
 
-			dp.create_local_folder(parquet_directory_path)
+			u.create_local_folder(parquet_directory_path)
 
 			df = pl.read_csv(csv_file_path, infer_schema=False)
 			df.write_parquet(parquet_file_path)

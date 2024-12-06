@@ -20,7 +20,7 @@ TEMPLATE = '{ticker}/{ticker}{date}'
 EXTENSION = '.csv.gz'
 
 import data_config as dc
-import data_paths as dp
+import utils as u
 
 
 def get_csv_details(url):
@@ -49,7 +49,7 @@ def download_csvgz_file(url, local_path):
 
 
 def unpack_csvgz_to_csv(csvgz_file_path, csv_file_path):
-	if dp.file_exists(csv_file_path):
+	if u.file_exists(csv_file_path):
 		os.remove(csv_file_path)
 
 	if csvgz_file_path.endswith('.gz'):
@@ -72,7 +72,7 @@ def handle_download(ticker_folder_path, filename, url):
 
 	csvgz_file_path = os.path.join(ticker_folder_path, filename)
 	csv_file_path   = get_formatted_csv_file_path(csvgz_file_path)
-	if not dp.file_exists(csv_file_path):
+	if not u.file_exists(csv_file_path):
 		download_csvgz_file(url, csvgz_file_path)
 		unpack_csvgz_to_csv(csvgz_file_path, csv_file_path)
 		print(f"Downloaded '{url}' --> '{csv_file_path}'")
@@ -112,13 +112,13 @@ def main():
 		tickers = [t for t in tickers if t in args.tickers]
 
 	if tickers:
-		dp.create_local_folder(args.output_directory_path)
+		u.create_local_folder(args.output_directory_path)
 
 	for ticker_idx, ticker in enumerate(tickers):
 		print(f'[{ticker_idx+1}/{len(tickers)}] Processing: {ticker}')
 
 		ticker_folder_path  = os.path.join(args.output_directory_path, ticker)
-		dp.create_local_folder(ticker_folder_path)
+		u.create_local_folder(ticker_folder_path)
 
 		details = get_csv_details(BASE_URL + ticker + '/')
 		for file_idx, detail in enumerate(details):

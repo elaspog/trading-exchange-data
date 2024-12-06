@@ -4,7 +4,7 @@ import glob
 import argparse
 
 
-SUPPORTED_PREPROCESSED_FORMATS = set(['csv', 'parquet'])
+ALLOWED_FORMATS = ['csv', 'parquet']
 
 
 def file_exists(local_path):
@@ -20,13 +20,13 @@ def read_file_paths_by_extension(folder_path, ticker, extension):
 	return glob.glob(os.path.join(folder_path, ticker, extension))
 
 
-def supported_preprocessed_formats(value):
-	if value not in SUPPORTED_PREPROCESSED_FORMATS:
-		raise argparse.ArgumentTypeError(f"The '{value}' is not a supported format. Valid formats are {', '.join(SUPPORTED_PREPROCESSED_FORMATS)}")
+def supported_file_formats(value):
+	if value not in ALLOWED_FORMATS:
+		raise argparse.ArgumentTypeError(f"The '{value}' is not a supported format. Valid formats are {', '.join(ALLOWED_FORMATS)}")
 	return value
 
 
-def parse_supported_preprocessed_format_arguments(
+def parse_supported_file_format_arguments(
 	supported_formats : set[str],
 	args              : list,
 	default_export    : str = None,

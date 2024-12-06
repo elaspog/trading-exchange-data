@@ -12,7 +12,7 @@ REPO_ROOT_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__
 sys.path.append(REPO_ROOT_DIRECTORY_PATH)
 
 import data_config as dc
-import data_paths as dp
+import utils as u
 
 
 OUTPUT_COLUMN_ORDER = [
@@ -74,14 +74,14 @@ def write_files(ticker, df, date_info, export_args, output_paths):
 	if export_args['csv']:
 		output_directory_path = os.path.join(output_paths.get('csv', output_paths.get('_')), f'{ticker}.{date_info}')
 		output_file_name      = os.path.join(output_directory_path, f'{ticker}.{date_info}.csv')
-		dp.create_local_folder(output_directory_path)
+		u.create_local_folder(output_directory_path)
 		df.write_csv(output_file_name)
 		print(f'\tFile written  : {output_file_name}')
 
 	if export_args['parquet']:
 		output_directory_path = os.path.join(output_paths.get('parquet', output_paths.get('_')), f'{ticker}.{date_info}')
 		output_file_name      = os.path.join(output_directory_path, f'{ticker}.{date_info}.parquet')
-		dp.create_local_folder(output_directory_path)
+		u.create_local_folder(output_directory_path)
 		df.write_parquet(output_file_name)
 		print(f'\tFile written  : {output_file_name}')
 
@@ -109,24 +109,24 @@ def main():
 	parser.add_argument('-f', '--filter',
 		nargs   = '+',
 		default = [],
-		type    = dp.supported_preprocessed_formats,
-		help    = f'Import output as any of supported formats: {dp.SUPPORTED_PREPROCESSED_FORMATS}'
+		type    = u.supported_file_formats,
+		help    = f'Import output as any of supported formats: {u.ALLOWED_FORMATS}'
 	)
 	parser.add_argument('-e', '--exports',
 		nargs   = '+',
 		default = [],
-		type    = dp.supported_preprocessed_formats,
-		help    = f'Export output as any of supported formats: {dp.SUPPORTED_PREPROCESSED_FORMATS}'
+		type    = u.supported_file_formats,
+		help    = f'Export output as any of supported formats: {u.ALLOWED_FORMATS}'
 	)
 
 	print()
 	args        = parser.parse_args()
-	import_args = dp.parse_supported_preprocessed_format_arguments(dp.SUPPORTED_PREPROCESSED_FORMATS, args.filter, 'parquet')
-	export_args = dp.parse_supported_preprocessed_format_arguments(dp.SUPPORTED_PREPROCESSED_FORMATS, args.exports, 'parquet')
+	import_args = u.parse_supported_file_format_arguments(u.ALLOWED_FORMATS, args.filter, 'parquet')
+	export_args = u.parse_supported_file_format_arguments(u.ALLOWED_FORMATS, args.exports, 'parquet')
 
 	import_args = [extension for extension, is_allowed in import_args.items() if is_allowed]
 	if len(import_args) > 1:
-		print(f'Only one import format is allowed: {" or ".join(dp.SUPPORTED_PREPROCESSED_FORMATS)}')
+		print(f'Only one import format is allowed: {" or ".join(u.ALLOWED_FORMATS)}')
 		return
 
 	input_directory_paths = {}
@@ -145,7 +145,7 @@ def main():
 		if export_args['parquet']:
 			output_directory_paths['parquet'] = os.path.join(REPO_ROOT_DIRECTORY_PATH, dc.BASE_DIRECTORY__DATA, dc.DIRECTORY_NAME__PREP_PARQUET)
 
-	missing_input_directories = [input_directory_path for input_directory_path in input_directory_paths.values() if not dp.file_exists(input_directory_path)]
+	missing_input_directories = [input_directory_path for input_directory_path in input_directory_paths.values() if not u.file_exists(input_directory_path)]
 	if missing_input_directories:
 		print(f'Input directories are missing:\n\t{"\n\t".join(missing_input_directories)}')
 		return
@@ -159,8 +159,8 @@ def main():
 
 		print(f'[{idx+1}/{len(args.tickers)}] Processing {ticker=}.')
 
-		csv_file_paths     = dp.read_file_paths_by_extension(input_paths.get('csv', input_paths.get('_')), ticker, '*.csv')
-		parquet_file_paths = dp.read_file_paths_by_extension(input_paths.get('parquet', input_paths.get('_')), ticker, '*.parquet')
+		csv_file_paths     = u.read_file_paths_by_extension(input_paths.get('csv', input_paths.get('_')), ticker, '*.csv')
+		parquet_file_paths = u.read_file_paths_by_extension(input_paths.get('parquet', input_paths.get('_')), ticker, '*.parquet')
 
 		if not csv_file_paths and not parquet_file_paths:
 			print(f'\tNo input file was found')

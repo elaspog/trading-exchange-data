@@ -22,7 +22,9 @@ source .wenv/Scripts/activate
 
 Install requirements
 ```sh
-python -m pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r bybit/requirements.downloader.txt
+python -m pip install -r bybit/requirements.converter.txt
 ```
 
 ## ByBit data downloader
@@ -30,29 +32,29 @@ python -m pip install -r requirements.txt
 [bybit](https://public.bybit.com/trading)
 
 ```sh
-python downloader_bybit.py -t BTCUSDT ETHUSDT
-python downloader_bybit.py --tickers BTCUSDT ETHUSDT
+python bybit/download_tick_data.py -t BTCUSDT ETHUSDT
+python bybit/download_tick_data.py --tickers BTCUSDT ETHUSDT
 ```
 
 ```sh
-python downloader_bybit.py -t BTCUSDT ETHUSDT -b
-python downloader_bybit.py -t BTCUSDT ETHUSDT --backfill
+python bybit/download_tick_data.py -t BTCUSDT ETHUSDT -b
+python bybit/download_tick_data.py -t BTCUSDT ETHUSDT --backfill
 ```
 
 ```sh
-python downloader_bybit.py -t BTCUSDT ETHUSDT -o DATA/1-DOWNLOADS
-python downloader_bybit.py -t BTCUSDT ETHUSDT --output_directory_path DATA/1-DOWNLOADS
+python bybit/download_tick_data.py -t BTCUSDT ETHUSDT -o DATA/1-DOWNLOADS
+python bybit/download_tick_data.py -t BTCUSDT ETHUSDT --output_directory_path DATA/1-DOWNLOADS
 ```
 
 
 ## ByBit data converter (from CSV to Parquet)
 
 ```sh
-python converter_bybit_tick_csv2parquet.py -t BTCUSDT ETHUSDT
-python converter_bybit_tick_csv2parquet.py --tickers BTCUSDT ETHUSDT
+python bybit/convert_tick_data_csv2parquet.py -t BTCUSDT ETHUSDT
+python bybit/convert_tick_data_csv2parquet.py --tickers BTCUSDT ETHUSDT
 ```
 
 ```sh
-python converter_bybit_tick_csv2parquet.py -t BTCUSDT ETHUSDT -i DATA/1-DOWNLOADS -o DATA/2-CONVERTED
-python converter_bybit_tick_csv2parquet.py -t BTCUSDT ETHUSDT --input_directory_path DATA/1-DOWNLOADS --output_directory_path DATA/2-CONVERTED
+python bybit/convert_tick_data_csv2parquet.py -t BTCUSDT ETHUSDT -i DATA/1-DOWNLOADS -o DATA/2-CONVERTED
+python bybit/convert_tick_data_csv2parquet.py -t BTCUSDT ETHUSDT --input_directory_path DATA/1-DOWNLOADS --output_directory_path DATA/2-CONVERTED
 ```

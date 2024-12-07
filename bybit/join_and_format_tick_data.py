@@ -88,9 +88,6 @@ def write_files(symbol, df, date_info, export_args, output_paths):
 
 def main():
 
-	default_output_directory_base = os.path.join(REPO_ROOT_DIRECTORY_PATH, dc.BASE_DIRECTORY__DATA, dc.DIRECTORY_NAME__PREP_CSV)
-	default_output_directory_base = os.path.join(REPO_ROOT_DIRECTORY_PATH, dc.BASE_DIRECTORY__DATA, dc.DIRECTORY_NAME__PREP_PARQUET)
-
 	parser = argparse.ArgumentParser(description='ByBit tick data preprocessor.')
 	parser.add_argument('-s', '--symbols',
 		nargs    = '+',
@@ -110,51 +107,36 @@ def main():
 		nargs   = '+',
 		default = [],
 		type    = u.supported_file_formats,
-		help    = f'Import output as any of supported formats: {u.ALLOWED_FORMATS}'
+		help    = f'Import input as one of the supported formats: {u.ALLOWED_FORMATS}'
 	)
 	parser.add_argument('-e', '--exports',
 		nargs   = '+',
 		default = [],
 		type    = u.supported_file_formats,
-		help    = f'Export output as any of supported formats: {u.ALLOWED_FORMATS}'
+		help    = f'Export output as any of the supported formats: {u.ALLOWED_FORMATS}'
 	)
 
 	print()
-	args        = parser.parse_args()
-	import_args = u.parse_supported_file_format_arguments(u.ALLOWED_FORMATS, args.formats, 'parquet')
-	export_args = u.parse_supported_file_format_arguments(u.ALLOWED_FORMATS, args.exports, 'parquet')
+	args                                = parser.parse_args()
+	import_args, input_directory_path   = u.handle_input_args(
+		args,
+		repo_root_directory    = REPO_ROOT_DIRECTORY_PATH,
+		base_data_directory    = dc.BASE_DIRECTORY__DATA,
+		base_directory_csv     = dc.DIRECTORY_NAME__TICK_CSV,
+		base_directory_parquet = dc.DIRECTORY_NAME__TICK_PARQUET,
+	)
+	export_args, output_directory_path  = u.handle_output_args(
+		args,
+		repo_root_directory    = REPO_ROOT_DIRECTORY_PATH,
+		base_data_directory    = dc.BASE_DIRECTORY__DATA,
+		base_directory_csv     = dc.DIRECTORY_NAME__PREP_CSV,
+		base_directory_parquet = dc.DIRECTORY_NAME__PREP_PARQUET,
+	)
 
-	input_directory_paths = {}
-	if args.input_directory_path:
-		input_directory_paths['_']       = args.input_directory_path
-	else:
-		input_directory_paths['csv']     = os.path.join(REPO_ROOT_DIRECTORY_PATH, dc.BASE_DIRECTORY__DATA, dc.DIRECTORY_NAME__TICK_CSV)
-		input_directory_paths['parquet'] = os.path.join(REPO_ROOT_DIRECTORY_PATH, dc.BASE_DIRECTORY__DATA, dc.DIRECTORY_NAME__TICK_PARQUET)
+	print(f'input directory : \n\t{"\n\t".join(input_directory_path.values())}')
+	print(f'output directory: \n\t{"\n\t".join(output_directory_path.values())}')
 
-	output_directory_paths = {}
-	if args.output_directory_path:
-		output_directory_paths['_']           = args.output_directory_path
-	else:
-		if export_args['csv']:
-			output_directory_paths['csv']     = os.path.join(REPO_ROOT_DIRECTORY_PATH, dc.BASE_DIRECTORY__DATA, dc.DIRECTORY_NAME__PREP_CSV)
-		if export_args['parquet']:
-			output_directory_paths['parquet'] = os.path.join(REPO_ROOT_DIRECTORY_PATH, dc.BASE_DIRECTORY__DATA, dc.DIRECTORY_NAME__PREP_PARQUET)
-
-	import_args = [extension for extension, is_allowed in import_args.items() if is_allowed]
-	if len(import_args) > 1:
-		print(f'Only one import format is allowed: {" or ".join(u.ALLOWED_FORMATS)}')
-		return
-
-	input_directory_paths     = {k: v for k, v in input_directory_paths.items() if k in import_args or k == '_'}
-	missing_input_directories = [input_directory_path for extension, input_directory_path in input_directory_paths.items() if not u.file_exists(input_directory_path)]
-	if missing_input_directories:
-		print(f'Input directories are missing:\n\t{"\n\t".join(missing_input_directories)}')
-		return
-
-	print(f'input directory : \n\t{"\n\t".join(input_directory_paths.values())}')
-	print(f'output directory: \n\t{"\n\t".join(output_directory_paths.values())}')
-
-	for idx, process_data in enumerate(itertools.product(args.symbols, [input_directory_paths], [output_directory_paths])):
+	for idx, process_data in enumerate(itertools.product(args.symbols, [input_directory_path], [output_directory_path])):
 		symbol, input_paths, output_paths = process_data
 
 		print(f'\n[{idx+1}/{len(args.symbols)}] Processing {symbol=}.')
@@ -188,4 +170,9 @@ def main():
 				return
 
 
-main()
+if __name__ == "__main__":
+	try:
+		main()
+	except u.PreconditionError as e:
+		print(e)
+		exit(1)

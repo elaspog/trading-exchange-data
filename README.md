@@ -1,7 +1,11 @@
 
 # Project
 
-Tick data downloader, format converter (CSV and Parquet), tick data joiner and preprocessor, tick data aggregator into OHLCV data for ByBit exchange written in Python.
+For ByBit exchange written in Python:
+* Tick data downloader (CSV)
+* Format converter (from CSV to Parquet)
+* Tick data joiner and preprocessor
+* Tick data aggregator into OHLCV data
 
 # CLI
 
@@ -119,6 +123,6 @@ python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --exports csv parquet
 ```
 
 ```sh
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -i DATA/1-PREPROCESSED -o DATA/2-OHLCV
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --input_directory_path DATA/1-PREPROCESSED --output_directory_path DATA/2-OHLCV
+python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -i DATA/2-PREPROCESSED -o DATA/3-OHLCV
+python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --input_directory_path DATA/2-PREPROCESSED --output_directory_path DATA/3-OHLCV
 ```

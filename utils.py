@@ -30,6 +30,10 @@ def read_file_paths_by_extension(directory_path, extension):
 	return glob.glob(os.path.join(directory_path, extension))
 
 
+def list_subdirectories_with_matching_prefix(path_to_directory, prefix):
+	return [d for d in glob.glob(os.path.join(path_to_directory, prefix + '*/'))]
+
+
 def supported_file_formats(value):
 	if value not in ALLOWED_FORMATS:
 		raise argparse.ArgumentTypeError(f"The '{value}' is not a supported format. Valid formats are {', '.join(ALLOWED_FORMATS)}")
@@ -87,11 +91,9 @@ def handle_output_args(args, repo_root_directory, base_data_directory, base_dire
 
 	output_directory_paths = {}
 	if args.output_directory_path:
-		output_directory_paths['_']           = args.output_directory_path
+		output_directory_paths['_']       = args.output_directory_path
 	else:
-		if export_args['csv']:
-			output_directory_paths['csv']     = os.path.join(repo_root_directory, base_data_directory, base_directory_csv)
-		if export_args['parquet']:
-			output_directory_paths['parquet'] = os.path.join(repo_root_directory, base_data_directory, base_directory_parquet)
+		output_directory_paths['csv']     = os.path.join(repo_root_directory, base_data_directory, base_directory_csv)
+		output_directory_paths['parquet'] = os.path.join(repo_root_directory, base_data_directory, base_directory_parquet)
 
 	return export_args, output_directory_paths

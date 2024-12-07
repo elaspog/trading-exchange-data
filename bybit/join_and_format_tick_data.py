@@ -116,7 +116,6 @@ def main():
 		help    = f'Export output as any of the supported formats: {u.ALLOWED_FORMATS}'
 	)
 
-	print()
 	args                                = parser.parse_args()
 	import_args, input_directory_path   = u.handle_input_args(
 		args,
@@ -132,9 +131,6 @@ def main():
 		base_directory_csv     = dc.DIRECTORY_NAME__PREP_CSV,
 		base_directory_parquet = dc.DIRECTORY_NAME__PREP_PARQUET,
 	)
-
-	print(f'input directory : \n\t{"\n\t".join(input_directory_path.values())}')
-	print(f'output directory: \n\t{"\n\t".join(output_directory_path.values())}')
 
 	for idx, process_data in enumerate(itertools.product(args.symbols, [input_directory_path], [output_directory_path])):
 		symbol, input_paths, output_paths = process_data

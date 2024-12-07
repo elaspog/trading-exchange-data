@@ -25,7 +25,7 @@ OUTPUT_COLUMN_ORDER = [
 ]
 
 
-def process_dataframes(file_paths, ticker, file_format):
+def process_dataframes(file_paths, symbol, file_format):
 
 	dfs = []
 	for idx, file_path in enumerate(file_paths):
@@ -38,7 +38,7 @@ def process_dataframes(file_paths, ticker, file_format):
 			raise NotImplementedError(f'Unknown format: {file_format}')
 
 		df = df.drop(['trdMatchID', 'grossValue', 'homeNotional', 'foreignNotional'])
-		df = df.filter(pl.col('symbol') == ticker)
+		df = df.filter(pl.col('symbol') == symbol)
 		df = df.reverse()
 		dfs.append(df)
 
@@ -67,20 +67,20 @@ def process_dataframes(file_paths, ticker, file_format):
 	return data_df, min_date, max_date
 
 
-def write_files(ticker, df, date_info, export_args, output_paths):
+def write_files(symbol, df, date_info, export_args, output_paths):
 
 	print(f'\tDimensions    : {df.shape}')
 
 	if export_args['csv']:
-		output_directory_path = os.path.join(output_paths.get('csv', output_paths.get('_')), f'{ticker}.{date_info}')
-		output_file_name      = os.path.join(output_directory_path, f'{ticker}.{date_info}.csv')
+		output_directory_path = os.path.join(output_paths.get('csv', output_paths.get('_')), f'{symbol}.{date_info}')
+		output_file_name      = os.path.join(output_directory_path, f'{symbol}.{date_info}.csv')
 		u.create_local_folder(output_directory_path)
 		df.write_csv(output_file_name)
 		print(f'\tFile written  : {output_file_name}')
 
 	if export_args['parquet']:
-		output_directory_path = os.path.join(output_paths.get('parquet', output_paths.get('_')), f'{ticker}.{date_info}')
-		output_file_name      = os.path.join(output_directory_path, f'{ticker}.{date_info}.parquet')
+		output_directory_path = os.path.join(output_paths.get('parquet', output_paths.get('_')), f'{symbol}.{date_info}')
+		output_file_name      = os.path.join(output_directory_path, f'{symbol}.{date_info}.parquet')
 		u.create_local_folder(output_directory_path)
 		df.write_parquet(output_file_name)
 		print(f'\tFile written  : {output_file_name}')
@@ -92,11 +92,11 @@ def main():
 	default_output_directory_base = os.path.join(REPO_ROOT_DIRECTORY_PATH, dc.BASE_DIRECTORY__DATA, dc.DIRECTORY_NAME__PREP_PARQUET)
 
 	parser = argparse.ArgumentParser(description='ByBit tick data preprocessor.')
-	parser.add_argument('-t', '--tickers',
+	parser.add_argument('-s', '--symbols',
 		nargs    = '+',
 		required = True,
 		type     = str,
-		help     = 'Tickers'
+		help     = 'Symbols'
 	)
 	parser.add_argument('-i', '--input_directory_path',
 		type    = str,
@@ -154,32 +154,32 @@ def main():
 	print(f'input directory : \n\t{"\n\t".join(input_directory_paths.values())}')
 	print(f'output directory: \n\t{"\n\t".join(output_directory_paths.values())}')
 
-	for idx, process_data in enumerate(itertools.product(args.tickers, [input_directory_paths], [output_directory_paths])):
-		ticker, input_paths, output_paths = process_data
+	for idx, process_data in enumerate(itertools.product(args.symbols, [input_directory_paths], [output_directory_paths])):
+		symbol, input_paths, output_paths = process_data
 
-		print(f'\n[{idx+1}/{len(args.tickers)}] Processing {ticker=}.')
+		print(f'\n[{idx+1}/{len(args.symbols)}] Processing {symbol=}.')
 
 		if 'csv' in import_args:
-			csv_file_paths     = u.read_file_paths_by_extension(input_paths.get('csv', input_paths.get('_')), ticker, '*.csv')
+			csv_file_paths     = u.read_file_paths_by_extension(input_paths.get('csv', input_paths.get('_')), symbol, '*.csv')
 
 			if csv_file_paths:
 				print(f'\tCSV files     : {len(csv_file_paths)}')
-				df, min_date, max_date = process_dataframes(csv_file_paths, ticker, 'csv')
+				df, min_date, max_date = process_dataframes(csv_file_paths, symbol, 'csv')
 				date_info              = f'{min_date}_{len(csv_file_paths)}_{max_date}'.replace('-', '')
-				write_files(ticker, df, date_info, export_args, output_paths)
+				write_files(symbol, df, date_info, export_args, output_paths)
 
 			else:
 				print(f'\tNo input CSV files were found')
 				return
 
 		if 'parquet' in import_args:
-			parquet_file_paths = u.read_file_paths_by_extension(input_paths.get('parquet', input_paths.get('_')), ticker, '*.parquet')
+			parquet_file_paths = u.read_file_paths_by_extension(input_paths.get('parquet', input_paths.get('_')), symbol, '*.parquet')
 
 			if parquet_file_paths:
 				print(f'\tParquet files : {len(parquet_file_paths)}')
-				df, min_date, max_date = process_dataframes(parquet_file_paths, ticker, 'parquet')
+				df, min_date, max_date = process_dataframes(parquet_file_paths, symbol, 'parquet')
 				date_info              = f'{min_date}_{len(parquet_file_paths)}_{max_date}'.replace('-', '')
-				write_files(ticker, df, date_info, export_args, output_paths)
+				write_files(symbol, df, date_info, export_args, output_paths)
 
 			else:
 				print(f'\tNo input Parquet files were found')

@@ -16,7 +16,7 @@ REPO_ROOT_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__
 sys.path.append(REPO_ROOT_DIRECTORY_PATH)
 
 BASE_URL = 'https://public.bybit.com/trading/'
-TEMPLATE = '{ticker}/{ticker}{date}'
+TEMPLATE = '{symbol}/{symbol}{date}'
 EXTENSION = '.csv.gz'
 
 import data_config as dc
@@ -68,9 +68,9 @@ def get_prev_day(start_date):
 		current_date -= timedelta(days=1)
 
 
-def handle_download(ticker_folder_path, filename, url):
+def handle_download(symbol_folder_path, filename, url):
 
-	csvgz_file_path = os.path.join(ticker_folder_path, filename)
+	csvgz_file_path = os.path.join(symbol_folder_path, filename)
 	csv_file_path   = get_formatted_csv_file_path(csvgz_file_path)
 	if not u.file_exists(csv_file_path):
 		download_csvgz_file(url, csvgz_file_path)
@@ -87,10 +87,10 @@ def main():
 	parser = argparse.ArgumentParser(
 		description='ByBit tick data downloader.'
 	)
-	parser.add_argument('-t', '--tickers',
+	parser.add_argument('-s', '--symbols',
 		nargs = '+',
 		type  = str,
-		help  = 'Tickers',
+		help  = 'Symbols',
 	)
 	parser.add_argument('-o', '--output_directory_path',
 		default = default_output_directory_base,
@@ -107,23 +107,23 @@ def main():
 	soup     = BeautifulSoup(response.text, 'html.parser')
 	links    = soup.find_all('a')
 
-	tickers  = [link.get('href')[:-1] for link in links if link.get('href').endswith('/')]
-	if args.tickers:
-		tickers = [t for t in tickers if t in args.tickers]
+	symbols  = [link.get('href')[:-1] for link in links if link.get('href').endswith('/')]
+	if args.symbols:
+		symbols = [t for t in symbols if t in args.symbols]
 
-	if tickers:
+	if symbols:
 		u.create_local_folder(args.output_directory_path)
 
-	for ticker_idx, ticker in enumerate(tickers):
-		print(f'[{ticker_idx+1}/{len(tickers)}] Processing: {ticker}')
+	for symbol_idx, symbol in enumerate(symbols):
+		print(f'[{symbol_idx+1}/{len(symbols)}] Processing: {symbol}')
 
-		ticker_folder_path  = os.path.join(args.output_directory_path, ticker)
-		u.create_local_folder(ticker_folder_path)
+		symbol_folder_path  = os.path.join(args.output_directory_path, symbol)
+		u.create_local_folder(symbol_folder_path)
 
-		details = get_csv_details(BASE_URL + ticker + '/')
+		details = get_csv_details(BASE_URL + symbol + '/')
 		for file_idx, detail in enumerate(reversed(details)):
 			print(f'\t[{file_idx+1}/{len(details)}] ', end='')
-			handle_download(ticker_folder_path, detail['file'], detail['url'])
+			handle_download(symbol_folder_path, detail['file'], detail['url'])
 
 		if not args.backfill:
 			continue
@@ -135,9 +135,9 @@ def main():
 				break
 			try:
 				print(f'\t[{hidden_date}] ', end='')
-				filename = '{ticker}{date}{ext}'.format(ticker=ticker, date=hidden_date, ext=EXTENSION)
-				url      = f'{BASE_URL}{TEMPLATE}{EXTENSION}'.format(ticker=ticker, date=hidden_date)
-				handle_download(ticker_folder_path, filename, url)
+				filename = '{symbol}{date}{ext}'.format(symbol=symbol, date=hidden_date, ext=EXTENSION)
+				url      = f'{BASE_URL}{TEMPLATE}{EXTENSION}'.format(symbol=symbol, date=hidden_date)
+				handle_download(symbol_folder_path, filename, url)
 			except:
 				print('Not Found.')
 				tolerance -= 1

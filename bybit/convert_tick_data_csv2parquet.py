@@ -47,7 +47,7 @@ def main():
 	for symbol_idx, symbol in enumerate(args.symbols):
 		print(f'[{symbol_idx+1}/{len(args.symbols)}] Processing {symbol=}.')
 
-		csv_file_paths = u.read_file_paths_by_extension(args.input_directory_path, symbol, '*.csv')
+		csv_file_paths = u.read_file_paths_by_extension(os.path.join(args.input_directory_path, symbol), '*.csv')
 		print(f'\tFound files: {len(csv_file_paths)}')
 
 		for csv_file_path in csv_file_paths:

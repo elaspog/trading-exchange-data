@@ -106,7 +106,7 @@ def main():
 		type    = str,
 		help    = 'Download directory path'
 	)
-	parser.add_argument('-f', '--filter',
+	parser.add_argument('-f', '--formats',
 		nargs   = '+',
 		default = [],
 		type    = u.supported_file_formats,
@@ -121,7 +121,7 @@ def main():
 
 	print()
 	args        = parser.parse_args()
-	import_args = u.parse_supported_file_format_arguments(u.ALLOWED_FORMATS, args.filter, 'parquet')
+	import_args = u.parse_supported_file_format_arguments(u.ALLOWED_FORMATS, args.formats, 'parquet')
 	export_args = u.parse_supported_file_format_arguments(u.ALLOWED_FORMATS, args.exports, 'parquet')
 
 	input_directory_paths = {}
@@ -160,7 +160,8 @@ def main():
 		print(f'\n[{idx+1}/{len(args.symbols)}] Processing {symbol=}.')
 
 		if 'csv' in import_args:
-			csv_file_paths     = u.read_file_paths_by_extension(input_paths.get('csv', input_paths.get('_')), symbol, '*.csv')
+			symbol_directory_path = os.path.join(input_paths.get('csv', input_paths.get('_')), symbol)
+			csv_file_paths        = u.read_file_paths_by_extension(symbol_directory_path, '*.csv')
 
 			if csv_file_paths:
 				print(f'\tCSV files     : {len(csv_file_paths)}')
@@ -173,7 +174,8 @@ def main():
 				return
 
 		if 'parquet' in import_args:
-			parquet_file_paths = u.read_file_paths_by_extension(input_paths.get('parquet', input_paths.get('_')), symbol, '*.parquet')
+			symbol_directory_path = os.path.join(input_paths.get('parquet', input_paths.get('_')), symbol)
+			parquet_file_paths    = u.read_file_paths_by_extension(symbol_directory_path, '*.parquet')
 
 			if parquet_file_paths:
 				print(f'\tParquet files : {len(parquet_file_paths)}')

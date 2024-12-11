@@ -33,7 +33,7 @@ def process_dataframes(file_paths, symbol, file_format):
 		if file_format == 'csv':
 			df = pl.read_csv(file_path, infer_schema=False)
 		elif file_format == 'parquet':
-			df = pl.read_parquet(file_path)
+			df = pl.read_parquet(file_path, memory_map=True)
 		else:
 			raise NotImplementedError(f'Unknown format: {file_format}')
 
@@ -44,27 +44,30 @@ def process_dataframes(file_paths, symbol, file_format):
 
 	data_df = pl.concat(dfs, how='vertical')
 	data_df = data_df.sort('timestamp')
-
-	aggregated_df = pl.concat([
-		data_df.head(1).clone(),
-		data_df.tail(1).clone(),
-	], how='vertical')
-
 	data_df = data_df.with_columns([
 		(pl.col('timestamp').cast(pl.Decimal(None, 9)) * 1_000_000_000).cast(pl.Int64).cast(pl.Datetime('ns')).cast(pl.Utf8).map_elements(lambda x: x[:-3], return_dtype=pl.Utf8).alias('datetime'),
 		pl.col('price').map_elements(lambda x: str(Decimal(x).quantize(Decimal(dc.PRICE_PRECISION))), return_dtype=pl.Utf8),
 		pl.col('timestamp').map_elements(lambda x: str(Decimal(x).quantize(Decimal(dc.TIMESTAMP_PRECISION))), return_dtype=pl.Utf8),
 		pl.col('tickDirection').alias('direction'),
 	])
+	data_df  = data_df.select(OUTPUT_COLUMN_ORDER)
+
+	return data_df
+
+
+def get_interval_info(data_df):
+
+	aggregated_df = pl.concat([
+		data_df.head(1).clone(),
+		data_df.tail(1).clone(),
+	], how='vertical')
 	aggregated_df = aggregated_df.with_columns([
 		(pl.col('timestamp').cast(pl.Decimal(None, 9)) * 1_000_000_000).cast(pl.Int64).cast(pl.Datetime('ns')).cast(pl.Utf8).map_elements(lambda x: x[:10], return_dtype=pl.Utf8).alias('date'),
 	])
-
-	data_df  = data_df.select(OUTPUT_COLUMN_ORDER)
 	min_date = aggregated_df.select(pl.col('date').first()).get_column('date').item()
 	max_date = aggregated_df.select(pl.col('date').last()).get_column('date').item()
 
-	return data_df, min_date, max_date
+	return min_date, max_date
 
 
 def write_files(symbol, df, date_info, export_args, output_paths):
@@ -143,7 +146,8 @@ def main():
 
 			if csv_file_paths:
 				print(f'\tCSV files     : {len(csv_file_paths)}')
-				df, min_date, max_date = process_dataframes(csv_file_paths, symbol, 'csv')
+				df                 = process_dataframes(csv_file_paths, symbol, 'csv')
+				min_date, max_date = get_interval_info(df)
 				date_info              = f'{min_date}_{len(csv_file_paths)}_{max_date}'.replace('-', '')
 				write_files(symbol, df, date_info, export_args, output_paths)
 
@@ -157,7 +161,8 @@ def main():
 
 			if parquet_file_paths:
 				print(f'\tParquet files : {len(parquet_file_paths)}')
-				df, min_date, max_date = process_dataframes(parquet_file_paths, symbol, 'parquet')
+				df                 = process_dataframes(parquet_file_paths, symbol, 'parquet')
+				min_date, max_date = get_interval_info(df)
 				date_info              = f'{min_date}_{len(parquet_file_paths)}_{max_date}'.replace('-', '')
 				write_files(symbol, df, date_info, export_args, output_paths)
 

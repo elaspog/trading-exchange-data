@@ -8,6 +8,7 @@ import argparse
 import itertools
 import polars as pl
 from decimal import Decimal
+from datetime import datetime
 
 REPO_ROOT_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(REPO_ROOT_DIRECTORY_PATH)
@@ -26,6 +27,15 @@ OUTPUT_COLUMN_ORDER = [
 	'side',
 	'size',
 ]
+
+
+def valid_date(s):
+
+	try:
+		return datetime.strptime(s, '%Y-%m-%d')
+
+	except ValueError:
+		raise argparse.ArgumentTypeError(f"Invalid data: '{s}'. The correct format has: YYYY-MM-DD.")
 
 
 def read_dataframe(file_path, input_format, symbol):
@@ -106,6 +116,26 @@ def handle_formats_args(formats, default = None):
 	return [f for f in formats if f in u.ALLOWED_FORMATS]
 
 
+def get_ordered_files_from_date_interval(process_detail, args):
+
+	matching_files = process_detail["input_files"]
+	if args.interval_begin:
+		matching_files = {
+			file_date : file_path
+			for file_date, file_path in matching_files.items()
+			if args.interval_begin <= datetime.strptime(file_date, '%Y-%m-%d')
+		}
+
+	if args.interval_end:
+		matching_files = {
+			file_date : file_path
+			for file_date, file_path in matching_files.items()
+			if datetime.strptime(file_date, '%Y-%m-%d') <= args.interval_end
+		}
+
+	return list(reversed(sorted([file_name for file_name in matching_files.values()])))
+
+
 def main():
 
 	default_output_directory = os.path.join(REPO_ROOT_DIRECTORY_PATH, dc.BASE_DIRECTORY__DATA, dc.DIRECTORY_NAME__AGGR_DB)
@@ -123,9 +153,19 @@ def main():
 		help     = f'TimeFrames: {ALLOWED_TIMEFRAMES}',
         default  = ALLOWED_TIMEFRAMES,
 	)
+	parser.add_argument('-b', '--interval_begin',
+		type    = valid_date,
+		default = None,
+		help    = 'Start date of interval (YYYY-MM-DD)',
+	)
+	parser.add_argument('-e', '--interval_end',
+		type    = valid_date,
+		default = None,
+		help    = 'End date of interval (YYYY-MM-DD)',
+	)
 	parser.add_argument('-i', '--input_directory_path',
 		type    = str,
-		help    = 'Input tick directory path'
+		help    = 'Input tick directory path',
 	)
 	parser.add_argument('-o', '--output_directory_path',
 		type    = str,
@@ -137,12 +177,6 @@ def main():
 		default  = [],
 		type     = u.supported_file_formats,
 		help     = f'Import input as one of the supported formats: {u.ALLOWED_FORMATS}',
-	)
-	parser.add_argument('-e', '--exports',
-		nargs   = '+',
-		default = [],
-		type    = u.supported_file_formats,
-		help    = f'Export output as any of the supported formats: {u.ALLOWED_FORMATS}',
 	)
 
 	args                                = parser.parse_args()
@@ -163,11 +197,16 @@ def main():
 		matching_directories = u.list_subdirectories_with_matching_prefix(input_directory, symbol)
 		for symbol_interval_input_subdirectory_path in matching_directories:
 
+			input_files = {
+				(file_date := os.path.basename(item).split('.')[1]) : item
+				for item in u.read_file_paths_by_extension(symbol_interval_input_subdirectory_path, f'*.{input_format}')
+			}
+
 			process_details.append({
 				'input_format' : input_format,
 				'symbol'       : symbol,
 				'indir_path'   : symbol_interval_input_subdirectory_path,
-				'input_files'  : u.read_file_paths_by_extension(symbol_interval_input_subdirectory_path, f'*.{input_format}'),
+				'input_files'  : input_files,
 			})
 
 	u.create_local_folder(args.output_directory_path)
@@ -179,10 +218,8 @@ def main():
 			print(f'No input file was found for {process_detail["indir_path"]}')
 			continue
 
-		db_conn             = duckdb.connect(os.path.join(args.output_directory_path, f'{symbol}.duckdb'))
-		timeframes_to_apply = [tf for tf in timeframes if tf != 'tick']
-
-		for aggr_timeframe in timeframes_to_apply:
+		db_conn = duckdb.connect(os.path.join(args.output_directory_path, f'{symbol}.duckdb'))
+		for aggr_timeframe in timeframes:
 			db_conn.execute(f"""
 				CREATE TABLE IF NOT EXISTS aggr_{aggr_timeframe} (
 					datetime TEXT PRIMARY KEY,
@@ -194,21 +231,23 @@ def main():
 				)
 			""")
 
-		for file_idx, file_path in enumerate(reversed(process_detail["input_files"]), start=1):
-			ticks_df = read_dataframe(file_path, process_detail['input_format'], symbol)
+		if (files_with_valid_date := get_ordered_files_from_date_interval(process_detail, args)):
 
-			for aggr_timeframe in timeframes_to_apply:
-				aggr_df = aggregate_ohlcv(ticks_df, aggr_timeframe, symbol)
+			for file_idx, file_path in enumerate(files_with_valid_date, start=1):
+				ticks_df = read_dataframe(file_path, process_detail['input_format'], symbol)
 
-				db_conn.register('aggr_df', aggr_df.to_arrow())
-				db_conn.execute(f"""
-					INSERT INTO aggr_{aggr_timeframe}
-					SELECT * FROM aggr_df
-					ON CONFLICT (datetime) DO NOTHING
-				""")
-				db_conn.unregister('aggr_df')
+				for aggr_timeframe in timeframes:
+					aggr_df = aggregate_ohlcv(ticks_df, aggr_timeframe, symbol)
 
-			print("\033[F\033[K" + f"\t{file_idx}/{len(process_detail['input_files'])}", flush=True)
+					db_conn.register('aggr_df', aggr_df.to_arrow())
+					db_conn.execute(f"""
+						INSERT INTO aggr_{aggr_timeframe}
+						SELECT * FROM aggr_df
+						ON CONFLICT (datetime) DO NOTHING
+					""")
+					db_conn.unregister('aggr_df')
+
+				print("\033[F\033[K" + f"\t{file_idx}/{len(files_with_valid_date)}", flush=True)
 
 
 if __name__ == "__main__":

@@ -6,3 +6,5 @@
 **/*.pyc
 **/*.csv
 **/*.parquet
+**/*.duckdb
+**/*.wal

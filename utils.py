@@ -6,6 +6,29 @@ import argparse
 
 ALLOWED_FORMATS = ['csv', 'parquet']
 
+TIME_UNITS_IN_SECONDS = {
+	's': 1,
+	'm': 60,
+	'h': 3600,
+	'd': 86400,
+	'w': 604800,
+}
+
+
+def timeframe_to_seconds(timeframe):
+
+	try:
+		unit  = timeframe[-1]
+		value = int(timeframe[:-1])
+
+		if unit not in TIME_UNITS_IN_SECONDS:
+			raise ValueError(f"Unknown {unit=}")
+
+		return value * TIME_UNITS_IN_SECONDS[unit]
+
+	except (ValueError, IndexError):
+		raise ValueError(f"Unknown {timeframe=}")
+
 
 class PreconditionError(Exception):
 

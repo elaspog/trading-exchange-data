@@ -3,6 +3,7 @@
 
 import os
 import sys
+import duckdb
 import argparse
 import itertools
 import polars as pl
@@ -15,7 +16,42 @@ import data_config as dc
 import utils as u
 
 
-ALLOWED_TIMEFRAMES  = ['tick'] + dc.OHLCV_TIMEFRAMES
+ALLOWED_TIMEFRAMES = [tf for tf in dc.OHLCV_TIMEFRAMES if u.timeframe_to_seconds(tf) <= 24*60*60]
+
+
+OUTPUT_COLUMN_ORDER = [
+	'datetime',
+	'timestamp',
+	'price',
+	'side',
+	'size',
+]
+
+
+def read_dataframe(file_path, input_format, symbol):
+
+	df = None
+	if input_format == 'csv':
+		df = pl.read_csv(file_path, infer_schema=False)
+
+	elif input_format == 'parquet':
+		df = pl.read_parquet(file_path)
+
+	else:
+		raise NotImplementedError(f'Unknown format: {input_format}')
+
+	df = df.drop(['trdMatchID', 'grossValue', 'homeNotional', 'foreignNotional'])
+	df = df.filter(pl.col('symbol') == symbol)
+	df = df.sort('timestamp')
+	df = df.reverse()
+	df = df.with_columns([
+		(pl.col('timestamp').cast(pl.Decimal(None, 9)) * 1_000_000_000).cast(pl.Int64).cast(pl.Datetime('ns')).cast(pl.Utf8).map_elements(lambda x: x[:-3], return_dtype=pl.Utf8).alias('datetime'),
+		pl.col('price').map_elements(lambda x: str(Decimal(x).quantize(Decimal(dc.PRICE_PRECISION))), return_dtype=pl.Utf8),
+		pl.col('timestamp').map_elements(lambda x: str(Decimal(x).quantize(Decimal(dc.TIMESTAMP_PRECISION))), return_dtype=pl.Utf8),
+	])
+	df  = df.select(OUTPUT_COLUMN_ORDER)
+
+	return df
 
 
 def aggregate_ohlcv(df, interval, symbol):
@@ -70,29 +106,16 @@ def handle_formats_args(formats, default = None):
 	return [f for f in formats if f in u.ALLOWED_FORMATS]
 
 
-def read_dataframe(process_detail):
-
-	df = None
-	if process_detail['input_format'] == 'csv':
-		df = pl.read_csv(process_detail['input_file'], infer_schema=False)
-
-	elif process_detail['input_format'] == 'parquet':
-		df = pl.read_parquet(process_detail['input_file'])
-
-	else:
-		raise NotImplementedError(f'Unknown format: {process_detail['input_format']}')
-
-	return df
-
-
 def main():
 
-	parser = argparse.ArgumentParser(description='ByBit tick data to OHLCV data aggregator')
+	default_output_directory = os.path.join(REPO_ROOT_DIRECTORY_PATH, dc.BASE_DIRECTORY__DATA, dc.DIRECTORY_NAME__AGGR_DB)
+
+	parser = argparse.ArgumentParser(description='ByBit raw tick data to OHLCV data aggregator')
 	parser.add_argument('-s', '--symbols',
 		nargs    = '+',
 		required = True,
 		type     = str,
-		help     = 'symbols'
+		help     = 'symbols',
 	)
 	parser.add_argument('-t', '--timeframes',
 		nargs    = '+',
@@ -106,89 +129,86 @@ def main():
 	)
 	parser.add_argument('-o', '--output_directory_path',
 		type    = str,
-		help    = 'Output OHLCV directory path'
+		help    = 'Output OHLCV directory path',
+		default = default_output_directory,
 	)
 	parser.add_argument('-f', '--formats',
 		nargs    = '+',
 		default  = [],
 		type     = u.supported_file_formats,
-		help     = f'Import input as one of the supported formats: {u.ALLOWED_FORMATS}'
+		help     = f'Import input as one of the supported formats: {u.ALLOWED_FORMATS}',
 	)
 	parser.add_argument('-e', '--exports',
 		nargs   = '+',
 		default = [],
 		type    = u.supported_file_formats,
-		help    = f'Export output as any of the supported formats: {u.ALLOWED_FORMATS}'
+		help    = f'Export output as any of the supported formats: {u.ALLOWED_FORMATS}',
 	)
 
 	args                                = parser.parse_args()
 	timeframes                          = handle_timeframe_args(args)
 	input_formats                       = handle_formats_args(args.formats, 'parquet')
-	output_formats                      = handle_formats_args(args.exports, 'parquet')
 	import_args, input_directory_paths  = u.handle_input_args(
 		args,
 		repo_root_directory    = REPO_ROOT_DIRECTORY_PATH,
 		base_data_directory    = dc.BASE_DIRECTORY__DATA,
-		base_directory_csv     = dc.DIRECTORY_NAME__PREP_CSV,
-		base_directory_parquet = dc.DIRECTORY_NAME__PREP_PARQUET,
-	)
-	export_args, output_directory_path  = u.handle_output_args(
-		args,
-		repo_root_directory    = REPO_ROOT_DIRECTORY_PATH,
-		base_data_directory    = dc.BASE_DIRECTORY__DATA,
-		base_directory_csv     = dc.DIRECTORY_NAME__AGGR_CSV,
-		base_directory_parquet = dc.DIRECTORY_NAME__AGGR_PARQUET,
+		base_directory_csv     = dc.DIRECTORY_NAME__TICK_CSV,
+		base_directory_parquet = dc.DIRECTORY_NAME__TICK_PARQUET,
 	)
 
 	process_details = []
 	for symbol, input_format in itertools.product(args.symbols, input_formats):
 
 		input_directory      = input_directory_paths.get(input_format, input_directory_paths.get('_'))
-		matching_directories = u.list_subdirectories_with_matching_prefix(input_directory, f'{symbol}.')
+		matching_directories = u.list_subdirectories_with_matching_prefix(input_directory, symbol)
 		for symbol_interval_input_subdirectory_path in matching_directories:
 
-			for output_format in output_formats:
+			process_details.append({
+				'input_format' : input_format,
+				'symbol'       : symbol,
+				'indir_path'   : symbol_interval_input_subdirectory_path,
+				'input_files'  : u.read_file_paths_by_extension(symbol_interval_input_subdirectory_path, f'*.{input_format}'),
+			})
 
-				symbol_interval                          = os.path.basename(os.path.dirname(symbol_interval_input_subdirectory_path))
-				symbol_interval_output_subdirectory_path = os.path.join(output_directory_path[output_format], symbol_interval)
-				input_files                              = u.read_file_paths_by_extension(symbol_interval_input_subdirectory_path, f'{symbol_interval}.{input_format}')
-
-				process_details.append({
-					'input_format' : input_format,
-					'output_format': output_format,
-					'symbol'       : symbol,
-					'subdir_name'  : symbol_interval,
-					'indir_path'   : symbol_interval_input_subdirectory_path,
-					'outdir_path'  : symbol_interval_output_subdirectory_path,
-					'input_file'   : input_files[0] if len(input_files) == 1 else None,
-				})
+	u.create_local_folder(args.output_directory_path)
 
 	for process_idx, process_detail in enumerate(process_details, start=1):
 
-		print(f'\n[{process_idx}/{len(process_details)}] Processing: {process_detail["indir_path"]}')
-		if process_detail["input_file"] is None:
+		print(f'\n[{process_idx}/{len(process_details)}] Processing: {process_detail["indir_path"]}\n')
+		if not process_detail['input_files']:
 			print(f'No input file was found for {process_detail["indir_path"]}')
 			continue
 
-		u.create_local_folder(process_detail['outdir_path'])
+		db_conn             = duckdb.connect(os.path.join(args.output_directory_path, f'{symbol}.duckdb'))
+		timeframes_to_apply = [tf for tf in timeframes if tf != 'tick']
 
-		ticks_df = read_dataframe(process_detail)
-		for aggr_timeframe in [tf for tf in timeframes if tf != 'tick']:
+		for aggr_timeframe in timeframes_to_apply:
+			db_conn.execute(f"""
+				CREATE TABLE IF NOT EXISTS aggr_{aggr_timeframe} (
+					datetime TEXT PRIMARY KEY,
+					open     TEXT,
+					high     TEXT,
+					low      TEXT,
+					close    TEXT,
+					volume   TEXT
+				)
+			""")
 
-			aggr_df = aggregate_ohlcv(ticks_df, aggr_timeframe, symbol)
-			print(f'\tDimensions of {aggr_timeframe:>4}: {aggr_df.shape}')
+		for file_idx, file_path in enumerate(reversed(process_detail["input_files"]), start=1):
+			ticks_df = read_dataframe(file_path, process_detail['input_format'], symbol)
 
-			file_name_base = os.path.join(process_detail['outdir_path'], f'{process_detail["subdir_name"]}.{aggr_timeframe}')
+			for aggr_timeframe in timeframes_to_apply:
+				aggr_df = aggregate_ohlcv(ticks_df, aggr_timeframe, symbol)
 
-			if 'csv' == process_detail['output_format']:
-				file_name = f'{file_name_base}.csv'
-				aggr_df.write_csv(file_name)
-				print(f'\tFile written  {aggr_timeframe:>4}: {file_name}')
+				db_conn.register('aggr_df', aggr_df.to_arrow())
+				db_conn.execute(f"""
+					INSERT INTO aggr_{aggr_timeframe}
+					SELECT * FROM aggr_df
+					ON CONFLICT (datetime) DO NOTHING
+				""")
+				db_conn.unregister('aggr_df')
 
-			if 'parquet' == process_detail['output_format']:
-				file_name = f'{file_name_base}.parquet'
-				aggr_df.write_parquet(file_name)
-				print(f'\tFile written  {aggr_timeframe:>4}: {file_name}')
+			print("\033[F\033[K" + f"\t{file_idx}/{len(process_detail['input_files'])}", flush=True)
 
 
 if __name__ == "__main__":

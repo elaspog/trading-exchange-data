@@ -9,29 +9,65 @@ For ByBit exchange written in Python:
 
 # CLI
 
-## Virtual Environment
+## Create virtual environment (Windows or *nix system)
 
-Create environment:
 ```sh
-python -m venv .wenv
-```
-
-Activate environment (Linux):
-```sh
-source .wenv/bin/activate
-```
-
-Activate environment (Windows):
-```sh
-source .wenv/Scripts/activate
+python -m venv .venv
 # or
-.wenv\Scripts\activate.bat
+python3 -m venv .venv
 ```
 
-Install requirements
+## Activate environment (Windows system & terminal)
+
+```sh
+.venv\Scripts\activate.bat
+```
+
+## Activate environment (Windows system / *nix terminal)
+
+Create environment (Windows system) and Activate environment (*nix terminal):
+```sh
+source .venv/Scripts/activate
+```
+
+## Activate environment (*nix system & terminal)
+
+```sh
+source .venv/bin/activate
+```
+
+## Install requirements (PROD and DEV)
+
 ```sh
 python -m pip install --upgrade pip
-python -m pip install -r bybit/requirements.txt
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
+```
+
+## Jupyter Virtual Environment
+
+Check environment:
+```sh
+which python
+which pip
+
+# if pip is missing or not in VENV
+
+python -m ensurepip --upgrade
+python -m pip install --upgrade pip
+```
+
+Install dependency if not installed:
+```sh
+pip install ipykernel
+```
+
+Install kernel into Jupyter:
+```sh
+python -m ipykernel install --user --name=exch_venv --display-name "Python (.exch_venv)"
+
+jupyter kernelspec uninstall exch_venv
+jupyter kernelspec list
 ```
 
 ## ByBit data downloader
@@ -94,7 +130,7 @@ python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT -i DATA/1-RAW_TICK 
 python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT --input_directory_path DATA/1-RAW_TICK --output_directory_path DATA/2-PREPROCESSED
 ```
 
-## ByBit tick to OHLCV data aggregator
+## ByBit preprocessed tick to OHLCV file aggregator
 
 ```sh
 python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT
@@ -125,4 +161,33 @@ python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --exports csv parquet
 ```sh
 python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -i DATA/2-PREPROCESSED -o DATA/3-OHLCV
 python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --input_directory_path DATA/2-PREPROCESSED --output_directory_path DATA/3-OHLCV
+```
+
+## ByBit raw tick to OHLCV database aggregator
+
+```sh
+python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT
+python bybit/aggregate_raw_tick_to_ohlcv_into_database.py --symbols BTCUSDT ETHUSDT
+```
+
+```sh
+python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT -t 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d
+python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT --timeframes 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d
+```
+
+```sh
+python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT -f csv
+python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT -f parquet
+python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT --formats csv
+python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT --formats parquet
+```
+
+```sh
+python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT -b 2022-12-12 -e 2022-12-21
+python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT --interval_begin 2022-12-12 --interval_end 2024-12-21
+```
+
+```sh
+python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT -i DATA/1-RAW_TICK -o DATA/3-OHLCV_DATABASE
+python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT --input_directory_path DATA/1-RAW_TICK --output_directory_path DATA/3-OHLCV_DATABASE
 ```

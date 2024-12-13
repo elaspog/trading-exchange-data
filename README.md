@@ -89,7 +89,6 @@ python bybit/download_tick_data.py -s BTCUSDT ETHUSDT -o DATA/1-DOWNLOADS
 python bybit/download_tick_data.py -s BTCUSDT ETHUSDT --output_directory_path DATA/1-DOWNLOADS
 ```
 
-
 ## ByBit tick data converter (from CSV to Parquet)
 
 ```sh
@@ -190,4 +189,30 @@ python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT --i
 ```sh
 python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT -i DATA/1-RAW_TICK -o DATA/3-OHLCV_DATABASE
 python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT --input_directory_path DATA/1-RAW_TICK --output_directory_path DATA/3-OHLCV_DATABASE
+```
+
+## ByBit OHLCV converter from DuckDB to file (CSV and Parquet)
+
+```sh
+python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\*
+python bybit/convert_duckdb_to_files.py --database_prefixes btcusdt.\*.duckdb ethusdt.\*
+```
+
+```sh
+python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* -t 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d tick
+python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* --timeframes 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d tick
+```
+
+```sh
+python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* -e csv
+python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* -e parquet
+python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* -e csv parquet
+python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* --exports csv
+python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* --exports parquet
+python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* --exports csv parquet
+```
+
+```sh
+python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* -i DATA/1-RAW_TICK -o DATA/3-OHLCV
+python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* --input_directory_path DATA/1-RAW_TICK --output_directory_path DATA/3-OHLCV
 ```

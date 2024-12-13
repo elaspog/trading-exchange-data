@@ -17,12 +17,11 @@ import data_config as dc
 import utils as u
 
 
-ALLOWED_TIMEFRAMES = [tf for tf in dc.OHLCV_TIMEFRAMES if u.timeframe_to_seconds(tf) <= 24*60*60]
+ALLOWED_TIMEFRAMES = set(['tick'] + [tf for tf in dc.OHLCV_TIMEFRAMES if u.timeframe_to_seconds(tf) <= 24*60*60])
 
 
 OUTPUT_COLUMN_ORDER = [
 	'datetime',
-	'timestamp',
 	'price',
 	'side',
 	'size',
@@ -116,24 +115,26 @@ def handle_formats_args(formats, default = None):
 	return [f for f in formats if f in u.ALLOWED_FORMATS]
 
 
-def get_ordered_files_from_date_interval(process_detail, args):
+def get_ordered_files_from_date_interval(matching_files, interval_begin, interval_end):
 
-	matching_files = process_detail["input_files"]
-	if args.interval_begin:
+	if interval_begin:
 		matching_files = {
 			file_date : file_path
 			for file_date, file_path in matching_files.items()
-			if args.interval_begin <= datetime.strptime(file_date, '%Y-%m-%d')
+			if interval_begin <= datetime.strptime(file_date, '%Y-%m-%d')
 		}
 
-	if args.interval_end:
+	if interval_end:
 		matching_files = {
 			file_date : file_path
 			for file_date, file_path in matching_files.items()
-			if datetime.strptime(file_date, '%Y-%m-%d') <= args.interval_end
+			if datetime.strptime(file_date, '%Y-%m-%d') <= interval_end
 		}
 
-	return list(reversed(sorted([file_name for file_name in matching_files.values()])))
+	min_date = min(matching_files.keys()) if matching_files else None
+	max_date = max(matching_files.keys()) if matching_files else None
+
+	return list(reversed(sorted([file_name for file_name in matching_files.values()]))), min_date, max_date
 
 
 def main():
@@ -190,7 +191,7 @@ def main():
 		base_directory_parquet = dc.DIRECTORY_NAME__TICK_PARQUET,
 	)
 
-	process_details = []
+	processing_details = []
 	for symbol, input_format in itertools.product(args.symbols, input_formats):
 
 		input_directory      = input_directory_paths.get(input_format, input_directory_paths.get('_'))
@@ -202,24 +203,39 @@ def main():
 				for item in u.read_file_paths_by_extension(symbol_input_subdirectory_path, f'*.{input_format}')
 			}
 
-			process_details.append({
+			files_with_matching_date, min_date, max_date = get_ordered_files_from_date_interval(input_files, args.interval_begin, args.interval_end)
+
+			processing_details.append({
 				'input_format' : input_format,
 				'symbol'       : symbol,
 				'indir_path'   : symbol_input_subdirectory_path,
-				'input_files'  : input_files,
+				'input_files'  : files_with_matching_date,
+				'db_file_name' : f'{symbol}.{min_date}_{len(files_with_matching_date)}_{max_date}.duckdb'.replace('-', '')
 			})
 
 	u.create_local_folder(args.output_directory_path)
 
-	for process_idx, process_detail in enumerate(process_details, start=1):
+	for process_idx, process_detail in enumerate(processing_details, start=1):
 
-		print(f'\n[{process_idx}/{len(process_details)}] Processing: {process_detail["indir_path"]}')
+		print(f'\n[{process_idx}/{len(processing_details)}] Processing: {process_detail["indir_path"]}')
 		if not process_detail['input_files']:
-			print(f'No input file was found for {process_detail["indir_path"]}')
+			print(f'\tNo input file was found for symbol \'{symbol}\' in interval {str(args.interval_begin)[:-9]}...{str(args.interval_end)[:-9]}')
 			continue
 
-		db_conn = duckdb.connect(os.path.join(args.output_directory_path, f'{symbol}.duckdb'))
-		for aggr_timeframe in timeframes:
+		ohlcv_names = [tf for tf in timeframes if tf != 'tick']
+		db_conn     = duckdb.connect(os.path.join(args.output_directory_path, process_detail['db_file_name']))
+
+		if 'tick' in timeframes:
+			db_conn.execute(f"""
+				CREATE TABLE IF NOT EXISTS tick (
+					datetime TEXT,
+					price    TEXT,
+					size     TEXT,
+					side     TEXT
+				);
+			""")
+
+		for aggr_timeframe in ohlcv_names:
 			db_conn.execute(f"""
 				CREATE TABLE IF NOT EXISTS aggr_{aggr_timeframe} (
 					datetime TEXT PRIMARY KEY,
@@ -231,29 +247,34 @@ def main():
 				)
 			""")
 
-		if (files_with_valid_date := get_ordered_files_from_date_interval(process_detail, args)):
-
-			print()
-			for file_idx, file_path in enumerate(files_with_valid_date, start=1):
-				ticks_df = read_dataframe(file_path, process_detail['input_format'], symbol)
-
-				for aggr_timeframe in timeframes:
-					aggr_df = aggregate_ohlcv(ticks_df, aggr_timeframe, symbol)
-
-					db_conn.register('aggr_df', aggr_df.to_arrow())
-					db_conn.execute(f"""
-						INSERT INTO aggr_{aggr_timeframe}
-						SELECT * FROM aggr_df
-						ON CONFLICT (datetime) DO NOTHING
-					""")
-					db_conn.unregister('aggr_df')
-
-				print("\033[F\033[K" + f"\t{file_idx}/{len(files_with_valid_date)}", flush=True)
-
-		else:
-			print(f'\tNo matching input files for {symbol} in interval {str(args.interval_begin)[:-9]}...{str(args.interval_end)[:-9]}')
-
 		print()
+		for file_idx, file_path in enumerate(process_detail['input_files'], start=1):
+			ticks_df = read_dataframe(file_path, process_detail['input_format'], symbol)
+
+			if 'tick' in timeframes:
+				db_conn.register('ticks_df', ticks_df.to_arrow())
+				db_conn.execute(f"""
+					INSERT INTO tick
+					SELECT * FROM ticks_df
+					--ON CONFLICT DO NOTHING
+				""")
+				db_conn.unregister('ticks_df')
+
+			for aggr_timeframe in ohlcv_names:
+				aggr_df = aggregate_ohlcv(ticks_df, aggr_timeframe, symbol)
+
+				db_conn.register('aggr_df', aggr_df.to_arrow())
+				db_conn.execute(f"""
+					INSERT INTO aggr_{aggr_timeframe}
+					SELECT * FROM aggr_df
+					ON CONFLICT (datetime) DO NOTHING
+				""")
+				db_conn.unregister('aggr_df')
+
+			print("\033[F\033[K" + f"\t{file_idx}/{len(process_detail['input_files'])}", flush=True)
+
+	print()
+
 
 if __name__ == "__main__":
 	try:

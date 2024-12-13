@@ -148,7 +148,7 @@ def main():
 				print(f'\tCSV files     : {len(csv_file_paths)}')
 				df                 = process_dataframes(csv_file_paths, symbol, 'csv')
 				min_date, max_date = get_interval_info(df)
-				date_info              = f'{min_date}_{len(csv_file_paths)}_{max_date}'.replace('-', '')
+				date_info          = f'{min_date}_{len(csv_file_paths)}_{max_date}'.replace('-', '')
 				write_files(symbol, df, date_info, export_args, output_paths)
 
 			else:
@@ -163,7 +163,7 @@ def main():
 				print(f'\tParquet files : {len(parquet_file_paths)}')
 				df                 = process_dataframes(parquet_file_paths, symbol, 'parquet')
 				min_date, max_date = get_interval_info(df)
-				date_info              = f'{min_date}_{len(parquet_file_paths)}_{max_date}'.replace('-', '')
+				date_info          = f'{min_date}_{len(parquet_file_paths)}_{max_date}'.replace('-', '')
 				write_files(symbol, df, date_info, export_args, output_paths)
 
 			else:

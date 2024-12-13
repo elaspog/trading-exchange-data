@@ -85,6 +85,32 @@ def parse_supported_file_format_arguments(
 	return formats
 
 
+def handle_timeframe_args(args, allowed_timeframes):
+
+	bad_timeframes = [tf for tf in args.timeframes if tf not in allowed_timeframes]
+	if bad_timeframes:
+		raise u.PreconditionError(f'TimeFrames not supported: {bad_timeframes}')
+
+	if not args.timeframes:
+		timeframes = allowed_timeframes
+
+	return [tf for tf in args.timeframes if tf in allowed_timeframes]
+
+
+def handle_formats_args(formats, default = None):
+
+	bad_formats = [f for f in formats if f not in ALLOWED_FORMATS]
+	if bad_formats:
+		raise u.PreconditionError(f'Formats not supported: {bad_formats}')
+
+	if not formats:
+		if default:
+			return [default]
+		formats = ALLOWED_FORMATS
+
+	return [f for f in formats if f in ALLOWED_FORMATS]
+
+
 def handle_input_args(args, repo_root_directory, base_data_directory, base_directory_csv, base_directory_parquet):
 
 	import_args = parse_supported_file_format_arguments(ALLOWED_FORMATS, args.formats, 'parquet')

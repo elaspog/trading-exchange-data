@@ -44,43 +44,18 @@ def aggregate_ohlcv(df, interval, symbol):
 	return df_aggr
 
 
-def handle_timeframe_args(args):
+def read_dataframe(input_file_name):
 
-	bad_timeframes = [tf for tf in args.timeframes if tf not in ALLOWED_TIMEFRAMES]
-	if bad_timeframes:
-		raise u.PreconditionError(f'TimeFrames not supported: {bad_timeframes}')
-
-	if not args.timeframes:
-		timeframes = ALLOWED_TIMEFRAMES
-
-	return [tf for tf in args.timeframes if tf in ALLOWED_TIMEFRAMES]
-
-
-def handle_formats_args(formats, default = None):
-
-	bad_formats = [f for f in formats if f not in u.ALLOWED_FORMATS]
-	if bad_formats:
-		raise u.PreconditionError(f'Formats not supported: {bad_formats}')
-
-	if not formats:
-		if default:
-			return [default]
-		formats = u.ALLOWED_FORMATS
-
-	return [f for f in formats if f in u.ALLOWED_FORMATS]
-
-
-def read_dataframe(process_detail):
-
+	input_file_extension = input_file_name.split('.')[-1]
 	df = None
-	if process_detail['input_format'] == 'csv':
-		df = pl.read_csv(process_detail['input_file'], infer_schema=False)
+	if input_file_extension == 'csv':
+		df = pl.read_csv(input_file_name, infer_schema=False)
 
-	elif process_detail['input_format'] == 'parquet':
-		df = pl.read_parquet(process_detail['input_file'])
+	elif input_file_extension == 'parquet':
+		df = pl.read_parquet(input_file_name)
 
 	else:
-		raise NotImplementedError(f'Unknown format: {process_detail['input_format']}')
+		raise NotImplementedError(f'Unknown format: {input_file_extension}')
 
 	return df
 
@@ -122,9 +97,9 @@ def main():
 	)
 
 	args                                = parser.parse_args()
-	timeframes                          = handle_timeframe_args(args)
-	input_formats                       = handle_formats_args(args.formats, 'parquet')
-	output_formats                      = handle_formats_args(args.exports, 'parquet')
+	timeframes                          = u.handle_timeframe_args(args, ALLOWED_TIMEFRAMES)
+	input_formats                       = u.handle_formats_args(args.formats, 'parquet')
+	output_formats                      = u.handle_formats_args(args.exports, 'parquet')
 	import_args, input_directory_paths  = u.handle_input_args(
 		args,
 		repo_root_directory    = REPO_ROOT_DIRECTORY_PATH,
@@ -172,7 +147,7 @@ def main():
 
 		u.create_local_folder(process_detail['outdir_path'])
 
-		ticks_df = read_dataframe(process_detail)
+		ticks_df = read_dataframe(process_detail['input_file'])
 		for aggr_timeframe in [tf for tf in timeframes if tf != 'tick']:
 
 			aggr_df = aggregate_ohlcv(ticks_df, aggr_timeframe, symbol)

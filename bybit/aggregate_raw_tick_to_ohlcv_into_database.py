@@ -195,17 +195,17 @@ def main():
 
 		input_directory      = input_directory_paths.get(input_format, input_directory_paths.get('_'))
 		matching_directories = u.list_subdirectories_with_matching_prefix(input_directory, symbol)
-		for symbol_interval_input_subdirectory_path in matching_directories:
+		for symbol_input_subdirectory_path in matching_directories:
 
 			input_files = {
 				(file_date := os.path.basename(item).split('.')[1]) : item
-				for item in u.read_file_paths_by_extension(symbol_interval_input_subdirectory_path, f'*.{input_format}')
+				for item in u.read_file_paths_by_extension(symbol_input_subdirectory_path, f'*.{input_format}')
 			}
 
 			process_details.append({
 				'input_format' : input_format,
 				'symbol'       : symbol,
-				'indir_path'   : symbol_interval_input_subdirectory_path,
+				'indir_path'   : symbol_input_subdirectory_path,
 				'input_files'  : input_files,
 			})
 
@@ -213,7 +213,7 @@ def main():
 
 	for process_idx, process_detail in enumerate(process_details, start=1):
 
-		print(f'\n[{process_idx}/{len(process_details)}] Processing: {process_detail["indir_path"]}\n')
+		print(f'\n[{process_idx}/{len(process_details)}] Processing: {process_detail["indir_path"]}')
 		if not process_detail['input_files']:
 			print(f'No input file was found for {process_detail["indir_path"]}')
 			continue
@@ -233,6 +233,7 @@ def main():
 
 		if (files_with_valid_date := get_ordered_files_from_date_interval(process_detail, args)):
 
+			print()
 			for file_idx, file_path in enumerate(files_with_valid_date, start=1):
 				ticks_df = read_dataframe(file_path, process_detail['input_format'], symbol)
 
@@ -249,6 +250,10 @@ def main():
 
 				print("\033[F\033[K" + f"\t{file_idx}/{len(files_with_valid_date)}", flush=True)
 
+		else:
+			print(f'\tNo matching input files for {symbol} in interval {str(args.interval_begin)[:-9]}...{str(args.interval_end)[:-9]}')
+
+		print()
 
 if __name__ == "__main__":
 	try:

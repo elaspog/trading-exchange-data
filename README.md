@@ -132,34 +132,34 @@ python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT --input_directory_p
 ## ByBit preprocessed tick to OHLCV file aggregator
 
 ```sh
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT
-python bybit/aggregate_tick_to_ohlcv.py --symbols BTCUSDT ETHUSDT
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py -s BTCUSDT ETHUSDT
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py --symbols BTCUSDT ETHUSDT
 ```
 
 ```sh
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -t 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d 1w
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --timeframes 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d 1w
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -t 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d 1w
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --timeframes 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d 1w
 ```
 
 ```sh
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -f csv
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -f parquet
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --formats csv
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --formats parquet
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -f csv
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -f parquet
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --formats csv
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --formats parquet
 ```
 
 ```sh
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -e csv
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -e parquet
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -e csv parquet
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --exports csv
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --exports parquet
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --exports csv parquet
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -e csv
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -e parquet
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -e csv parquet
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --exports csv
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --exports parquet
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --exports csv parquet
 ```
 
 ```sh
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -i DATA/2-PREPROCESSED -o DATA/3-OHLCV
-python bybit/aggregate_tick_to_ohlcv.py -s BTCUSDT ETHUSDT --input_directory_path DATA/2-PREPROCESSED --output_directory_path DATA/3-OHLCV
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -i DATA/2-PREPROCESSED -o DATA/3-OHLCV
+python bybit/aggregate_preprocessed_tick_to_ohlcv.py.py -s BTCUSDT ETHUSDT --input_directory_path DATA/2-PREPROCESSED --output_directory_path DATA/3-OHLCV
 ```
 
 ## ByBit raw tick to OHLCV database aggregator

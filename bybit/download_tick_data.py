@@ -13,14 +13,17 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 
 REPO_ROOT_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+LIBRARIES_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../libs/python'))
+
 sys.path.append(REPO_ROOT_DIRECTORY_PATH)
+sys.path.append(LIBRARIES_DIRECTORY_PATH)
 
 BASE_URL = 'https://public.bybit.com/trading/'
 TEMPLATE = '{symbol}/{symbol}{date}'
 EXTENSION = '.csv.gz'
 
 import data_config as dc
-import utils as u
+import file_utils as fu
 
 
 def get_csv_details(url):
@@ -49,7 +52,7 @@ def download_csvgz_file(url, local_path):
 
 
 def unpack_csvgz_to_csv(csvgz_file_path, csv_file_path):
-	if u.file_exists(csv_file_path):
+	if fu.file_exists(csv_file_path):
 		os.remove(csv_file_path)
 
 	if csvgz_file_path.endswith('.gz'):
@@ -72,7 +75,7 @@ def handle_download(symbol_folder_path, filename, url):
 
 	csvgz_file_path = os.path.join(symbol_folder_path, filename)
 	csv_file_path   = get_formatted_csv_file_path(csvgz_file_path)
-	if not u.file_exists(csv_file_path):
+	if not fu.file_exists(csv_file_path):
 		download_csvgz_file(url, csvgz_file_path)
 		unpack_csvgz_to_csv(csvgz_file_path, csv_file_path)
 		print(f"Downloaded '{url}' --> '{csv_file_path}'")
@@ -112,13 +115,13 @@ def main():
 		symbols = [t for t in symbols if t in args.symbols]
 
 	if symbols:
-		u.create_local_folder(args.output_directory_path)
+		fu.create_local_folder(args.output_directory_path)
 
 	for symbol_idx, symbol in enumerate(symbols):
 		print(f'[{symbol_idx+1}/{len(symbols)}] Processing: {symbol}')
 
 		symbol_folder_path  = os.path.join(args.output_directory_path, symbol)
-		u.create_local_folder(symbol_folder_path)
+		fu.create_local_folder(symbol_folder_path)
 
 		details = get_csv_details(BASE_URL + symbol + '/')
 		for file_idx, detail in enumerate(reversed(details)):

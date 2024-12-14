@@ -11,13 +11,19 @@ from decimal import Decimal
 from datetime import datetime
 
 REPO_ROOT_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+LIBRARIES_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../libs/python'))
+
 sys.path.append(REPO_ROOT_DIRECTORY_PATH)
+sys.path.append(LIBRARIES_DIRECTORY_PATH)
 
 import data_config as dc
-import utils as u
+import file_utils as fu
+import arg_utils as au
+import errors as e
+import domain as d
 
 
-ALLOWED_TIMEFRAMES = set(['tick'] + [tf for tf in dc.OHLCV_TIMEFRAMES if u.timeframe_to_seconds(tf) <= 24*60*60])
+ALLOWED_TIMEFRAMES = set(['tick'] + [tf for tf in dc.OHLCV_TIMEFRAMES if d.timeframe_to_seconds(tf) <= 24*60*60])
 
 
 OUTPUT_COLUMN_ORDER = [
@@ -93,7 +99,7 @@ def handle_timeframe_args(args):
 
 	bad_timeframes = [tf for tf in args.timeframes if tf not in ALLOWED_TIMEFRAMES]
 	if bad_timeframes:
-		raise u.PreconditionError(f'TimeFrames not supported: {bad_timeframes}')
+		raise e.PreconditionError(f'TimeFrames not supported: {bad_timeframes}')
 
 	if not args.timeframes:
 		timeframes = ALLOWED_TIMEFRAMES
@@ -103,16 +109,16 @@ def handle_timeframe_args(args):
 
 def handle_formats_args(formats, default = None):
 
-	bad_formats = [f for f in formats if f not in u.ALLOWED_FORMATS]
+	bad_formats = [f for f in formats if f not in au.ALLOWED_FORMATS]
 	if bad_formats:
-		raise u.PreconditionError(f'Formats not supported: {bad_formats}')
+		raise e.PreconditionError(f'Formats not supported: {bad_formats}')
 
 	if not formats:
 		if default:
 			return [default]
-		formats = u.ALLOWED_FORMATS
+		formats = au.ALLOWED_FORMATS
 
-	return [f for f in formats if f in u.ALLOWED_FORMATS]
+	return [f for f in formats if f in au.ALLOWED_FORMATS]
 
 
 def get_ordered_files_from_date_interval(matching_files, interval_begin, interval_end):
@@ -176,14 +182,14 @@ def main():
 	parser.add_argument('-f', '--formats',
 		nargs    = '+',
 		default  = [],
-		type     = u.supported_file_formats,
-		help     = f'Import input as one of the supported formats: {u.ALLOWED_FORMATS}',
+		type     = au.supported_file_formats,
+		help     = f'Import input as one of the supported formats: {au.ALLOWED_FORMATS}',
 	)
 
 	args                                = parser.parse_args()
 	timeframes                          = handle_timeframe_args(args)
 	input_formats                       = handle_formats_args(args.formats, 'parquet')
-	import_args, input_directory_paths  = u.handle_input_args(
+	import_args, input_directory_paths  = au.handle_input_args(
 		args,
 		repo_root_directory    = REPO_ROOT_DIRECTORY_PATH,
 		base_data_directory    = dc.BASE_DIRECTORY__DATA,
@@ -195,12 +201,12 @@ def main():
 	for symbol, input_format in itertools.product(args.symbols, input_formats):
 
 		input_directory      = input_directory_paths.get(input_format, input_directory_paths.get('_'))
-		matching_directories = u.list_subdirectories_with_matching_prefix(input_directory, symbol)
+		matching_directories = fu.list_subdirectories_with_matching_prefix(input_directory, symbol)
 		for symbol_input_subdirectory_path in matching_directories:
 
 			input_files = {
 				(file_date := os.path.basename(item).split('.')[1]) : item
-				for item in u.read_file_paths_by_extension(symbol_input_subdirectory_path, f'*.{input_format}')
+				for item in fu.read_file_paths_by_extension(symbol_input_subdirectory_path, f'*.{input_format}')
 			}
 
 			files_with_matching_date, min_date, max_date = get_ordered_files_from_date_interval(input_files, args.interval_begin, args.interval_end)
@@ -213,7 +219,7 @@ def main():
 				'db_file_name' : f'{symbol}.{min_date}_{len(files_with_matching_date)}_{max_date}.duckdb'.replace('-', '')
 			})
 
-	u.create_local_folder(args.output_directory_path)
+	fu.create_local_folder(args.output_directory_path)
 
 	for process_idx, process_detail in enumerate(processing_details, start=1):
 
@@ -279,6 +285,6 @@ def main():
 if __name__ == "__main__":
 	try:
 		main()
-	except u.PreconditionError as e:
+	except e.PreconditionError as e:
 		print(e)
 		exit(1)

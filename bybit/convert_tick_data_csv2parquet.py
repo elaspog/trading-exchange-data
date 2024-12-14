@@ -9,10 +9,13 @@ import polars as pl
 from decimal import Decimal
 
 REPO_ROOT_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+LIBRARIES_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../libs/python'))
+
 sys.path.append(REPO_ROOT_DIRECTORY_PATH)
+sys.path.append(LIBRARIES_DIRECTORY_PATH)
 
 import data_config as dc
-import utils as u
+import file_utils as fu
 
 
 def main():
@@ -42,19 +45,19 @@ def main():
 
 	print(f'input directory  : {args.input_directory_path}')
 	print(f'output directory : {args.output_directory_path}')
-	u.create_local_folder(args.output_directory_path)
+	fu.create_local_folder(args.output_directory_path)
 
 	for symbol_idx, symbol in enumerate(args.symbols):
 		print(f'[{symbol_idx+1}/{len(args.symbols)}] Processing {symbol=}.')
 
-		csv_file_paths = u.read_file_paths_by_extension(os.path.join(args.input_directory_path, symbol), '*.csv')
+		csv_file_paths = fu.read_file_paths_by_extension(os.path.join(args.input_directory_path, symbol), '*.csv')
 		print(f'\tFound files: {len(csv_file_paths)}')
 
 		for csv_file_path in csv_file_paths:
 			parquet_directory_path = os.path.join(args.output_directory_path, symbol)
 			parquet_file_path      = os.path.join(parquet_directory_path, os.path.basename(csv_file_path).replace('.csv', '.parquet'))
 
-			u.create_local_folder(parquet_directory_path)
+			fu.create_local_folder(parquet_directory_path)
 
 			df = pl.read_csv(csv_file_path, infer_schema=False)
 			df.write_parquet(parquet_file_path)

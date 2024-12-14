@@ -9,10 +9,15 @@ import polars as pl
 from decimal import Decimal
 
 REPO_ROOT_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+LIBRARIES_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../libs/python'))
+
 sys.path.append(REPO_ROOT_DIRECTORY_PATH)
+sys.path.append(LIBRARIES_DIRECTORY_PATH)
 
 import data_config as dc
-import utils as u
+import file_utils as fu
+import arg_utils as au
+import errors as e
 
 
 OUTPUT_COLUMN_ORDER = [
@@ -77,14 +82,14 @@ def write_files(symbol, df, date_info, export_args, output_paths):
 	if export_args['csv']:
 		output_directory_path = os.path.join(output_paths.get('csv', output_paths.get('_')), f'{symbol}.{date_info}')
 		output_file_name      = os.path.join(output_directory_path, f'{symbol}.{date_info}.csv')
-		u.create_local_folder(output_directory_path)
+		fu.create_local_folder(output_directory_path)
 		df.write_csv(output_file_name)
 		print(f'\tFile written  : {output_file_name}')
 
 	if export_args['parquet']:
 		output_directory_path = os.path.join(output_paths.get('parquet', output_paths.get('_')), f'{symbol}.{date_info}')
 		output_file_name      = os.path.join(output_directory_path, f'{symbol}.{date_info}.parquet')
-		u.create_local_folder(output_directory_path)
+		fu.create_local_folder(output_directory_path)
 		df.write_parquet(output_file_name)
 		print(f'\tFile written  : {output_file_name}')
 
@@ -109,25 +114,25 @@ def main():
 	parser.add_argument('-f', '--formats',
 		nargs   = '+',
 		default = [],
-		type    = u.supported_file_formats,
-		help    = f'Import input as one of the supported formats: {u.ALLOWED_FORMATS}'
+		type    = au.supported_file_formats,
+		help    = f'Import input as one of the supported formats: {au.ALLOWED_FORMATS}'
 	)
 	parser.add_argument('-e', '--exports',
 		nargs   = '+',
 		default = [],
-		type    = u.supported_file_formats,
-		help    = f'Export output as any of the supported formats: {u.ALLOWED_FORMATS}'
+		type    = au.supported_file_formats,
+		help    = f'Export output as any of the supported formats: {au.ALLOWED_FORMATS}'
 	)
 
 	args                                = parser.parse_args()
-	import_args, input_directory_path   = u.handle_input_args(
+	import_args, input_directory_path   = au.handle_input_args(
 		args,
 		repo_root_directory    = REPO_ROOT_DIRECTORY_PATH,
 		base_data_directory    = dc.BASE_DIRECTORY__DATA,
 		base_directory_csv     = dc.DIRECTORY_NAME__TICK_CSV,
 		base_directory_parquet = dc.DIRECTORY_NAME__TICK_PARQUET,
 	)
-	export_args, output_directory_path  = u.handle_output_args(
+	export_args, output_directory_path  = au.handle_output_args(
 		args,
 		repo_root_directory    = REPO_ROOT_DIRECTORY_PATH,
 		base_data_directory    = dc.BASE_DIRECTORY__DATA,
@@ -142,7 +147,7 @@ def main():
 
 		if 'csv' in import_args:
 			symbol_directory_path = os.path.join(input_paths.get('csv', input_paths.get('_')), symbol)
-			csv_file_paths        = u.read_file_paths_by_extension(symbol_directory_path, '*.csv')
+			csv_file_paths        = fu.read_file_paths_by_extension(symbol_directory_path, '*.csv')
 
 			if csv_file_paths:
 				print(f'\tCSV files     : {len(csv_file_paths)}')
@@ -157,7 +162,7 @@ def main():
 
 		if 'parquet' in import_args:
 			symbol_directory_path = os.path.join(input_paths.get('parquet', input_paths.get('_')), symbol)
-			parquet_file_paths    = u.read_file_paths_by_extension(symbol_directory_path, '*.parquet')
+			parquet_file_paths    = fu.read_file_paths_by_extension(symbol_directory_path, '*.parquet')
 
 			if parquet_file_paths:
 				print(f'\tParquet files : {len(parquet_file_paths)}')
@@ -174,6 +179,6 @@ def main():
 if __name__ == "__main__":
 	try:
 		main()
-	except u.PreconditionError as e:
+	except e.PreconditionError as e:
 		print(e)
 		exit(1)

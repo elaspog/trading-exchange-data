@@ -6,17 +6,21 @@ import sys
 import glob
 import duckdb
 import argparse
-import numpy as np
 import polars as pl
 
 REPO_ROOT_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+LIBRARIES_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../libs/python'))
+
 sys.path.append(REPO_ROOT_DIRECTORY_PATH)
+sys.path.append(LIBRARIES_DIRECTORY_PATH)
 
 import data_config as dc
-import utils as u
+import file_utils as fu
+import arg_utils as au
+import domain as d
 
 
-ALLOWED_TIMEFRAMES = set(['tick'] + [tf for tf in dc.OHLCV_TIMEFRAMES if u.timeframe_to_seconds(tf) <= 24*60*60])
+ALLOWED_TIMEFRAMES = set(['tick'] + [tf for tf in dc.OHLCV_TIMEFRAMES if d.timeframe_to_seconds(tf) <= 24*60*60])
 
 
 def locate_ohlcv_databases(input_directory_path, database_prefixes):
@@ -72,13 +76,13 @@ def main():
 	parser.add_argument('-e', '--exports',
 		nargs   = '+',
 		default = [],
-		type    = u.supported_file_formats,
-		help    = f'Export output as any of the supported formats: {u.ALLOWED_FORMATS}'
+		type    = au.supported_file_formats,
+		help    = f'Export output as any of the supported formats: {au.ALLOWED_FORMATS}'
 	)
 
 	args                               = parser.parse_args()
-	output_formats                     = u.handle_formats_args(args.exports, 'parquet')
-	export_args, output_directory_path = u.handle_output_args(
+	output_formats                     = au.handle_formats_args(args.exports, 'parquet')
+	export_args, output_directory_path = au.handle_output_args(
 		args,
 		repo_root_directory    = REPO_ROOT_DIRECTORY_PATH,
 		base_data_directory    = dc.BASE_DIRECTORY__DATA,
@@ -86,7 +90,7 @@ def main():
 		base_directory_parquet = dc.DIRECTORY_NAME__AGGR_PARQUET,
 	)
 
-	if not u.file_exists(args.input_directory_path):
+	if not fu.file_exists(args.input_directory_path):
 		print(f'Missing input directory: {args.input_directory_path}')
 		return
 
@@ -126,7 +130,7 @@ def main():
 
 	for export_format, is_allowed in export_args.items():
 		if is_allowed:
-			u.create_local_folder(output_directory_path[export_format])
+			fu.create_local_folder(output_directory_path[export_format])
 
 	for idx, db in enumerate(valid_db_files_to_process, start=1):
 		print(f'\n[{idx}/{len(valid_db_files_to_process)}] Processing {db["database_file"]}')
@@ -138,14 +142,14 @@ def main():
 
 			if export_args['csv']:
 				dir_path_csv     = os.path.join(output_directory_path.get('csv', output_directory_path.get('_')), infix)
-				u.create_local_folder(dir_path_csv)
+				fu.create_local_folder(dir_path_csv)
 				output_file_path = os.path.join(dir_path_csv, f'{infix}.{timeframe}.csv')
 				tf_data.write_csv(output_file_path)
 				print(f'\t{timeframe:<4} : {output_file_path}')
 
 			if export_args['parquet']:
 				dir_path_parquet = os.path.join(output_directory_path.get('parquet', output_directory_path.get('_')), infix)
-				u.create_local_folder(dir_path_parquet)
+				fu.create_local_folder(dir_path_parquet)
 				output_file_path = os.path.join(dir_path_parquet, f'{infix}.{timeframe}.parquet')
 				tf_data.write_parquet(output_file_path)
 				print(f'\t{timeframe:<4} : {output_file_path}')

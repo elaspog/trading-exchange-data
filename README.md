@@ -7,6 +7,14 @@ For ByBit exchange written in Python:
 * Tick data joiner and preprocessor
 * Tick data aggregator into OHLCV data
 
+# Repository
+
+```sh
+git clone https://github.com/elaspog/trading-exchange-data.git
+cd trading-exchange-data
+git submodule update --init --recursive
+```
+
 # CLI
 
 ## Create virtual environment (Windows or *nix system)
@@ -40,7 +48,7 @@ source .venv/bin/activate
 
 ```sh
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+python -m pip install -r libs/deps/requirements.txt
 python -m pip install -r requirements-dev.txt
 ```
 

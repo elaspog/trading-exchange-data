@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+
+
+import os
+import sys
+import argparse
+import polars as pl
+from decimal import Decimal
+
+REPO_ROOT_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+LIBRARIES_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../libs/python'))
+
+sys.path.append(REPO_ROOT_DIRECTORY_PATH)
+sys.path.append(LIBRARIES_DIRECTORY_PATH)
+
+import data_config as dc
+import file_utils as fu
+import arg_utils as au
+import errors as e
+
+
+ALLOWED_TIMEFRAMES  = ['tick'] + dc.OHLCV_TIMEFRAMES
+OUTPUT_COLUMN_ORDER = [
+	'datetime',
+	'price',
+	'side',
+	'size',
+	'tickDirection',
+]
+
+
+def get_joined_and_processed_dataframe(csv_file_paths, symbol, input_format):
+
+	dfs = []
+	for idx, file_path in enumerate(csv_file_paths):
+
+		df = None
+		if input_format == 'csv':
+			df = pl.read_csv(file_path, infer_schema=False)
+
+		elif input_format == 'parquet':
+			df = pl.read_parquet(file_path, memory_map=True)
+
+		else:
+			raise NotImplementedError(f'Unknown format: {input_format}')
+
+		df = df.drop(['trdMatchID', 'grossValue', 'homeNotional', 'foreignNotional'])
+		df = df.filter(pl.col('symbol') == symbol)
+		df = df.reverse()
+		dfs.append(df)
+
+	data_df = pl.concat(dfs, how='vertical')
+	data_df = data_df.sort('timestamp')
+
+	aggregated_df = pl.concat([
+		data_df.head(1).clone(),
+		data_df.tail(1).clone(),
+	], how='vertical')
+
+	data_df = data_df.with_columns([
+		(pl.col('timestamp').cast(pl.Decimal(None, 9)) * 1_000_000_000).cast(pl.Int64).cast(pl.Datetime('ns')).cast(pl.Utf8).map_elements(lambda x: x[:-3], return_dtype=pl.Utf8).alias('datetime'),
+		pl.col('price').map_elements(lambda x: str(Decimal(x).quantize(Decimal(dc.PRICE_PRECISION))), return_dtype=pl.Utf8),
+		pl.col('timestamp').map_elements(lambda x: str(Decimal(x).quantize(Decimal(dc.TIMESTAMP_PRECISION))), return_dtype=pl.Utf8),
+	])
+	aggregated_df = aggregated_df.with_columns([
+		(pl.col('timestamp').cast(pl.Decimal(None, 9)) * 1_000_000_000).cast(pl.Int64).cast(pl.Datetime('ns')).cast(pl.Utf8).map_elements(lambda x: x[:10], return_dtype=pl.Utf8).alias('date'),
+	])
+
+	data_df  = data_df.select(OUTPUT_COLUMN_ORDER)
+	min_date = aggregated_df.select(pl.col('date').first()).get_column('date').item()
+	max_date = aggregated_df.select(pl.col('date').last()).get_column('date').item()
+
+	return data_df, min_date, max_date
+
+
+def aggregate_ohlcv(df, interval, symbol):
+
+	precision_price  = Decimal(dc.PRICE_PRECISION)
+	precision_volume = Decimal(dc.VOLUME_PRECISION)
+
+	df_aggr = df.sort('datetime')
+	df_aggr = df.with_columns(
+		pl.col("datetime").str.strptime(pl.Datetime).dt.truncate(interval).alias("datetime"),
+        pl.col("price").cast(pl.Float64),
+        pl.col("size").cast(pl.Float64),
+	)
+	df_aggr = df_aggr.group_by("datetime").agg([
+		pl.col("price").first().map_elements(lambda x: str(Decimal(x).quantize(precision_price)), return_dtype=pl.Utf8).alias("open"),
+		pl.col("price").max().map_elements(lambda x: str(Decimal(x).quantize(precision_price)), return_dtype=pl.Utf8).alias("high"),
+		pl.col("price").min().map_elements(lambda x: str(Decimal(x).quantize(precision_price)), return_dtype=pl.Utf8).alias("low"),
+		pl.col("price").last().map_elements(lambda x: str(Decimal(x).quantize(precision_price)), return_dtype=pl.Utf8).alias("close"),
+		pl.col("size").sum().map_elements(lambda x: str(Decimal(x).quantize(precision_volume)), return_dtype=pl.Utf8).alias("volume"),
+	])
+	df_aggr = df_aggr.sort('datetime')
+	df_aggr = df_aggr.with_columns(
+		pl.col("datetime").dt.strftime("%Y-%m-%d %H:%M:%S").alias("datetime")
+	)
+
+	return df_aggr
+
+
+def main():
+
+	parser = argparse.ArgumentParser(description='ByBit tick data to OHLCV transformer')
+	parser.add_argument('-s', '--symbols',
+		nargs    = '+',
+		required = True,
+		type     = str,
+		help     = 'symbols'
+	)
+	parser.add_argument('-t', '--timeframes',
+		nargs    = '+',
+		type     = str,
+		help     = f'TimeFrames: {ALLOWED_TIMEFRAMES}',
+        default  = ALLOWED_TIMEFRAMES,
+	)
+
+	parser.add_argument('-f', '--formats',
+		nargs    = '+',
+		default  = [],
+		type     = au.supported_file_formats,
+		help     = f'Import input as one of the supported formats: {au.ALLOWED_FORMATS}'
+	)
+	parser.add_argument('-e', '--exports',
+		nargs   = '+',
+		default = [],
+		type    = au.supported_file_formats,
+		help    = f'Export output as any of the supported formats: {au.ALLOWED_FORMATS}'
+	)
+	parser.add_argument('-i', '--input_directory_path',
+		type    = str,
+		help    = 'Input tick directory path'
+	)
+	parser.add_argument('-o', '--output_directory_path',
+		type    = str,
+		help    = 'Output OHLCV directory path'
+	)
+	args = parser.parse_args()
+	import_args, input_directory_path   = au.handle_input_args(
+		args,
+		repo_root_directory    = REPO_ROOT_DIRECTORY_PATH,
+		base_data_directory    = dc.BASE_DIRECTORY__DATA,
+		base_directory_csv     = dc.DIRECTORY_NAME__TICK_CSV,
+		base_directory_parquet = dc.DIRECTORY_NAME__TICK_PARQUET,
+	)
+	export_args, output_directory_path  = au.handle_output_args(
+		args,
+		repo_root_directory    = REPO_ROOT_DIRECTORY_PATH,
+		base_data_directory    = dc.BASE_DIRECTORY__DATA,
+		base_directory_csv     = dc.DIRECTORY_NAME__PREP_CSV,
+		base_directory_parquet = dc.DIRECTORY_NAME__PREP_PARQUET,
+	)
+
+	bad_timeframes = [tf for tf in args.timeframes if tf not in ALLOWED_TIMEFRAMES]
+	if bad_timeframes:
+		print(f'TimeFrames not supported: {bad_timeframes}')
+		return
+
+	if not args.timeframes:
+		timeframes = ALLOWED_TIMEFRAMES
+	timeframes     = [tf for tf in args.timeframes if tf in ALLOWED_TIMEFRAMES]
+
+	if not args.exports:
+		exports = au.ALLOWED_FORMATS
+	exports     = [tf for tf in args.exports if tf in au.ALLOWED_FORMATS]
+
+	input_format = import_args[0]
+	if not fu.file_exists(input_directory_path[input_format]):
+		print(f'Missing input directory: {input_directory_path[input_format]}')
+		return
+
+	for symbol_idx, symbol in enumerate(args.symbols):
+
+		symbol_dir_path = os.path.join(input_directory_path[input_format], symbol)
+		print(f'[{symbol_idx+1}/{len(args.symbols)}] Processing {symbol_dir_path}')
+
+		input_folder_path = os.path.join(input_directory_path[input_format], symbol)
+		input_files       = fu.read_file_paths_by_extension(input_folder_path, f'*.{input_format}')
+		if len(input_files) == 0:
+			continue
+
+		df_tick, min_date, max_date = get_joined_and_processed_dataframe(input_files, symbol, input_format)
+		date_info = f'{min_date}_{len(input_files)}_{max_date}'.replace('-', '')
+		print(f'\tDimensions of tick: {df_tick.shape}')
+
+		results = []
+		if 'tick' in timeframes:
+			results.append({
+				'timeframe' : 'tick',
+				'dataframe' : df_tick,
+				'file_name' : f'{symbol}.{date_info}.tick',
+			})
+		for aggr_timeframe in [tf for tf in timeframes if tf != 'tick']:
+			aggregation = {
+				'timeframe' : aggr_timeframe,
+				'dataframe' : aggregate_ohlcv(df_tick, aggr_timeframe, symbol),
+				'file_name' : f'{symbol}.{date_info}.{aggr_timeframe}',
+			}
+			print(f'\tDimensions of {aggr_timeframe:>4}: {aggregation["dataframe"].shape}')
+			results.append(aggregation)
+
+		if 'csv' in exports:
+			csv_directory_path = os.path.join(output_directory_path['csv'], f'{symbol}.{date_info}')
+			fu.create_local_folder(csv_directory_path)
+			for result in results:
+				file_name = f"{result['file_name']}.csv"
+				result['dataframe'].write_csv(os.path.join(csv_directory_path, file_name))
+				print(f'\tFile written  {result["timeframe"]:>4}: {file_name}')
+
+		if 'parquet' in exports:
+			parquet_directory_path = os.path.join(output_directory_path['parquet'], f'{symbol}.{date_info}')
+			fu.create_local_folder(parquet_directory_path)
+			for result in results:
+				file_name = f"{result['file_name']}.parquet"
+				result['dataframe'].write_parquet(os.path.join(parquet_directory_path, file_name))
+				print(f'\tFile written  {result["timeframe"]:>4}: {file_name}')
+
+
+if __name__ == '__main__':
+	try:
+		main()
+	except e.PreconditionError as e:
+		print(e)
+		exit(1)

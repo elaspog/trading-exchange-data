@@ -4,6 +4,7 @@
 **/.python-version
 
 **/*.pyc
+**/*.gz
 **/*.csv
 **/*.parquet
 **/*.duckdb

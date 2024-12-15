@@ -21,16 +21,6 @@ import errors as e
 import utils as u
 
 
-OUTPUT_COLUMN_ORDER = [
-	'datetime',
-	'timestamp',
-	'price',
-	'side',
-	'size',
-	'direction',
-]
-
-
 def write_files(symbol, df, date_info, export_args, output_paths):
 
 	print(f'\tDimensions    : {df.shape}')
@@ -107,7 +97,7 @@ def main():
 
 			if csv_file_paths:
 				print(f'\tCSV files     : {len(csv_file_paths)}')
-				df                 = u.read_and_concat_dataframes(csv_file_paths, symbol, 'csv', OUTPUT_COLUMN_ORDER)
+				df                 = u.read_and_concat_dataframes(csv_file_paths, symbol, 'csv')
 				min_date, max_date = u.get_interval_info(df)
 				date_info          = f'{min_date}_{len(csv_file_paths)}_{max_date}'.replace('-', '')
 				write_files(symbol, df, date_info, export_args, output_paths)
@@ -122,7 +112,7 @@ def main():
 
 			if parquet_file_paths:
 				print(f'\tParquet files : {len(parquet_file_paths)}')
-				df                 = u.read_and_concat_dataframes(parquet_file_paths, symbol, 'parquet', OUTPUT_COLUMN_ORDER)
+				df                 = u.read_and_concat_dataframes(parquet_file_paths, symbol, 'parquet')
 				min_date, max_date = u.get_interval_info(df)
 				date_info          = f'{min_date}_{len(parquet_file_paths)}_{max_date}'.replace('-', '')
 				write_files(symbol, df, date_info, export_args, output_paths)

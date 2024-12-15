@@ -11,6 +11,16 @@ sys.path.append(LIBRARIES_DIRECTORY_PATH)
 import data_config as dc
 
 
+OUTPUT_COLUMN_ORDER = [
+	'datetime',
+	'timestamp',
+	'price',
+	'side',
+	'size',
+	'direction',
+]
+
+
 def read_polars_dataframe(file_path, file_format):
 
 	df = None
@@ -26,7 +36,7 @@ def read_polars_dataframe(file_path, file_format):
 	return df
 
 
-def read_and_concat_dataframes(file_paths, symbol, file_format, output_column_order):
+def read_and_concat_dataframes(file_paths, symbol, file_format):
 
 	dfs = []
 	for idx, file_path in enumerate(file_paths):
@@ -34,7 +44,6 @@ def read_and_concat_dataframes(file_paths, symbol, file_format, output_column_or
 		df = read_polars_dataframe(file_path, file_format)
 		df = df.drop(['trdMatchID', 'grossValue', 'homeNotional', 'foreignNotional'])
 		df = df.filter(pl.col('symbol') == symbol)
-		df = df.reverse()
 		dfs.append(df)
 
 	data_df = pl.concat(dfs, how='vertical')
@@ -45,7 +54,7 @@ def read_and_concat_dataframes(file_paths, symbol, file_format, output_column_or
 		pl.col('timestamp').map_elements(lambda x: str(Decimal(x).quantize(Decimal(dc.TIMESTAMP_PRECISION))), return_dtype=pl.Utf8),
 		pl.col('tickDirection').alias('direction'),
 	])
-	data_df  = data_df.select(output_column_order)
+	data_df  = data_df.select(OUTPUT_COLUMN_ORDER)
 
 	return data_df
 

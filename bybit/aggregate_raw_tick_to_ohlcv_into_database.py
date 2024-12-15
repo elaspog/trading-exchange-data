@@ -50,7 +50,6 @@ def read_dataframe(file_path, file_format, symbol):
 	df = df.drop(['trdMatchID', 'grossValue', 'homeNotional', 'foreignNotional'])
 	df = df.filter(pl.col('symbol') == symbol)
 	df = df.sort('timestamp')
-	df = df.reverse()
 	df = df.with_columns([
 		(pl.col('timestamp').cast(pl.Decimal(None, 9)) * 1_000_000_000).cast(pl.Int64).cast(pl.Datetime('ns')).cast(pl.Utf8).map_elements(lambda x: x[:-3], return_dtype=pl.Utf8).alias('datetime'),
 		pl.col('price').map_elements(lambda x: str(Decimal(x).quantize(Decimal(dc.PRICE_PRECISION))), return_dtype=pl.Utf8),
@@ -200,19 +199,18 @@ def main():
 			if 'tick' in timeframes:
 				db_conn.register('ticks_df', ticks_df.to_arrow())
 				db_conn.execute(f"""
-					INSERT INTO tick
-					SELECT * FROM ticks_df
-					--ON CONFLICT DO NOTHING
+					INSERT INTO tick (datetime, open, high, low, close, volume)
+					SELECT datetime, open, high, low, close, volume
+					FROM ticks_df
 				""")
 				db_conn.unregister('ticks_df')
 
 			for aggr_timeframe in ohlcv_names:
 				aggr_df = u.aggregate_ohlcv(ticks_df, aggr_timeframe, symbol)
-
-				db_conn.register('aggr_df', aggr_df.to_arrow())
 				db_conn.execute(f"""
-					INSERT INTO aggr_{aggr_timeframe}
-					SELECT * FROM aggr_df
+					INSERT INTO aggr_{aggr_timeframe} (datetime, open, high, low, close, volume)
+					SELECT datetime, open, high, low, close, volume
+					FROM aggr_df
 					ON CONFLICT (datetime) DO NOTHING
 				""")
 				db_conn.unregister('aggr_df')

@@ -111,7 +111,7 @@ def main():
 
 		fu.create_local_folder(process_detail['outdir_path'])
 
-		ticks_df = u.read_polars_dataframe(process_detail['input_file'], input_file_name.split('.')[-1])
+		ticks_df = u.read_polars_dataframe(process_detail['input_file'], process_detail['input_file'].split('.')[-1])
 		for aggr_timeframe in [tf for tf in timeframes if tf != 'tick']:
 
 			aggr_df = u.aggregate_ohlcv(ticks_df, aggr_timeframe, symbol)

@@ -21,13 +21,6 @@ import utils as u
 
 
 ALLOWED_TIMEFRAMES  = ['tick'] + dc.OHLCV_TIMEFRAMES
-OUTPUT_COLUMN_ORDER = [
-	'datetime',
-	'price',
-	'side',
-	'size',
-	'tickDirection',
-]
 
 
 def main():
@@ -78,8 +71,8 @@ def main():
 		args,
 		repo_root_directory    = REPO_ROOT_DIRECTORY_PATH,
 		base_data_directory    = dc.BASE_DIRECTORY__DATA,
-		base_directory_csv     = dc.DIRECTORY_NAME__PREP_CSV,
-		base_directory_parquet = dc.DIRECTORY_NAME__PREP_PARQUET,
+		base_directory_csv     = dc.DIRECTORY_NAME__AGGR_CSV,
+		base_directory_parquet = dc.DIRECTORY_NAME__AGGR_PARQUET,
 	)
 
 	bad_timeframes = [tf for tf in args.timeframes if tf not in ALLOWED_TIMEFRAMES]
@@ -110,7 +103,7 @@ def main():
 		if len(input_files) == 0:
 			continue
 
-		df_tick            = u.read_and_concat_dataframes(input_files, symbol, input_format, OUTPUT_COLUMN_ORDER)
+		df_tick            = u.read_and_concat_dataframes(input_files, symbol, input_format)
 		min_date, max_date = u.get_interval_info(df_tick)
 		date_info          = f'{min_date}_{len(input_files)}_{max_date}'.replace('-', '')
 		print(f'\tDimensions of tick: {df_tick.shape}')

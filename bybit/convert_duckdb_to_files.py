@@ -137,7 +137,7 @@ def main():
 
 		for timeframe, table_name in table_names_to_query.items():
 
-			tf_data = duckdb.connect(db['database_file']).execute(f"""FROM {table_name}""").pl().sort('datetime')
+			tf_data = duckdb.connect(db['database_file']).execute(f"""SELECT datetime, open, high, low, close, volume FROM {table_name}""").pl().sort('datetime')
 			infix   = db["output_file_prefix"]
 
 			if export_args['csv']:

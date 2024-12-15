@@ -61,32 +61,6 @@ def read_dataframe(file_path, file_format, symbol):
 	return df
 
 
-def handle_timeframe_args(args):
-
-	bad_timeframes = [tf for tf in args.timeframes if tf not in ALLOWED_TIMEFRAMES]
-	if bad_timeframes:
-		raise e.PreconditionError(f'TimeFrames not supported: {bad_timeframes}')
-
-	if not args.timeframes:
-		timeframes = ALLOWED_TIMEFRAMES
-
-	return [tf for tf in args.timeframes if tf in ALLOWED_TIMEFRAMES]
-
-
-def handle_formats_args(formats, default = None):
-
-	bad_formats = [f for f in formats if f not in au.ALLOWED_FORMATS]
-	if bad_formats:
-		raise e.PreconditionError(f'Formats not supported: {bad_formats}')
-
-	if not formats:
-		if default:
-			return [default]
-		formats = au.ALLOWED_FORMATS
-
-	return [f for f in formats if f in au.ALLOWED_FORMATS]
-
-
 def get_ordered_files_from_date_interval(matching_files, interval_begin, interval_end):
 
 	if interval_begin:
@@ -153,8 +127,8 @@ def main():
 	)
 
 	args                                = parser.parse_args()
-	timeframes                          = handle_timeframe_args(args)
-	input_formats                       = handle_formats_args(args.formats, 'parquet')
+	timeframes                          = au.handle_timeframe_args(args, ALLOWED_TIMEFRAMES)
+	input_formats                       = au.handle_formats_args(args.formats, 'parquet')
 	import_args, input_directory_paths  = au.handle_input_args(
 		args,
 		repo_root_directory    = REPO_ROOT_DIRECTORY_PATH,

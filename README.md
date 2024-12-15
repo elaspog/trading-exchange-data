@@ -112,29 +112,29 @@ python bybit/convert_tick_data_csv2parquet.py -s BTCUSDT ETHUSDT --input_directo
 ## ByBit tick data preprocessor
 
 ```sh
-python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT
-python bybit/join_and_format_tick_data.py --symbols BTCUSDT ETHUSDT
+python bybit/preprocess_tick_data.py -s BTCUSDT ETHUSDT
+python bybit/preprocess_tick_data.py --symbols BTCUSDT ETHUSDT
 ```
 
 ```sh
-python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT -f csv
-python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT -f parquet
-python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT --formats csv
-python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT --formats parquet
+python bybit/preprocess_tick_data.py -s BTCUSDT ETHUSDT -f csv
+python bybit/preprocess_tick_data.py -s BTCUSDT ETHUSDT -f parquet
+python bybit/preprocess_tick_data.py -s BTCUSDT ETHUSDT --formats csv
+python bybit/preprocess_tick_data.py -s BTCUSDT ETHUSDT --formats parquet
 ```
 
 ```sh
-python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT -e csv
-python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT -e parquet
-python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT -e csv parquet
-python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT --exports csv
-python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT --exports parquet
-python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT --exports csv parquet
+python bybit/preprocess_tick_data.py -s BTCUSDT ETHUSDT -e csv
+python bybit/preprocess_tick_data.py -s BTCUSDT ETHUSDT -e parquet
+python bybit/preprocess_tick_data.py -s BTCUSDT ETHUSDT -e csv parquet
+python bybit/preprocess_tick_data.py -s BTCUSDT ETHUSDT --exports csv
+python bybit/preprocess_tick_data.py -s BTCUSDT ETHUSDT --exports parquet
+python bybit/preprocess_tick_data.py -s BTCUSDT ETHUSDT --exports csv parquet
 ```
 
 ```sh
-python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT -i DATA/1-RAW_TICK -o DATA/2-PREPROCESSED
-python bybit/join_and_format_tick_data.py -s BTCUSDT ETHUSDT --input_directory_path DATA/1-RAW_TICK --output_directory_path DATA/2-PREPROCESSED
+python bybit/preprocess_tick_data.py -s BTCUSDT ETHUSDT -i DATA/1-RAW_TICK -o DATA/2-PREPROCESSED
+python bybit/preprocess_tick_data.py -s BTCUSDT ETHUSDT --input_directory_path DATA/1-RAW_TICK --output_directory_path DATA/2-PREPROCESSED
 ```
 
 ## ByBit preprocessed tick to OHLCV file aggregator

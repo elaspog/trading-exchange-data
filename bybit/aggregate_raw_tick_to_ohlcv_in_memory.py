@@ -30,41 +30,6 @@ OUTPUT_COLUMN_ORDER = [
 ]
 
 
-def get_joined_and_processed_dataframe(csv_file_paths, symbol, file_format):
-
-	dfs = []
-	for idx, file_path in enumerate(csv_file_paths):
-
-		df = u.read_polars_dataframe(file_path, file_format)
-		df = df.drop(['trdMatchID', 'grossValue', 'homeNotional', 'foreignNotional'])
-		df = df.filter(pl.col('symbol') == symbol)
-		df = df.reverse()
-		dfs.append(df)
-
-	data_df = pl.concat(dfs, how='vertical')
-	data_df = data_df.sort('timestamp')
-
-	aggregated_df = pl.concat([
-		data_df.head(1).clone(),
-		data_df.tail(1).clone(),
-	], how='vertical')
-
-	data_df = data_df.with_columns([
-		(pl.col('timestamp').cast(pl.Decimal(None, 9)) * 1_000_000_000).cast(pl.Int64).cast(pl.Datetime('ns')).cast(pl.Utf8).map_elements(lambda x: x[:-3], return_dtype=pl.Utf8).alias('datetime'),
-		pl.col('price').map_elements(lambda x: str(Decimal(x).quantize(Decimal(dc.PRICE_PRECISION))), return_dtype=pl.Utf8),
-		pl.col('timestamp').map_elements(lambda x: str(Decimal(x).quantize(Decimal(dc.TIMESTAMP_PRECISION))), return_dtype=pl.Utf8),
-	])
-	aggregated_df = aggregated_df.with_columns([
-		(pl.col('timestamp').cast(pl.Decimal(None, 9)) * 1_000_000_000).cast(pl.Int64).cast(pl.Datetime('ns')).cast(pl.Utf8).map_elements(lambda x: x[:10], return_dtype=pl.Utf8).alias('date'),
-	])
-
-	data_df  = data_df.select(OUTPUT_COLUMN_ORDER)
-	min_date = aggregated_df.select(pl.col('date').first()).get_column('date').item()
-	max_date = aggregated_df.select(pl.col('date').last()).get_column('date').item()
-
-	return data_df, min_date, max_date
-
-
 def main():
 
 	parser = argparse.ArgumentParser(description='ByBit tick data to OHLCV transformer')
@@ -145,8 +110,9 @@ def main():
 		if len(input_files) == 0:
 			continue
 
-		df_tick, min_date, max_date = get_joined_and_processed_dataframe(input_files, symbol, input_format)
-		date_info = f'{min_date}_{len(input_files)}_{max_date}'.replace('-', '')
+		df_tick            = u.read_and_concat_dataframes(input_files, symbol, input_format, OUTPUT_COLUMN_ORDER)
+		min_date, max_date = u.get_interval_info(df_tick)
+		date_info          = f'{min_date}_{len(input_files)}_{max_date}'.replace('-', '')
 		print(f'\tDimensions of tick: {df_tick.shape}')
 
 		results = []

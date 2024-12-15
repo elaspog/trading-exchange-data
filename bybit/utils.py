@@ -26,6 +26,45 @@ def read_polars_dataframe(file_path, file_format):
 	return df
 
 
+def read_and_concat_dataframes(file_paths, symbol, file_format, output_column_order):
+
+	dfs = []
+	for idx, file_path in enumerate(file_paths):
+
+		df = read_polars_dataframe(file_path, file_format)
+		df = df.drop(['trdMatchID', 'grossValue', 'homeNotional', 'foreignNotional'])
+		df = df.filter(pl.col('symbol') == symbol)
+		df = df.reverse()
+		dfs.append(df)
+
+	data_df = pl.concat(dfs, how='vertical')
+	data_df = data_df.sort('timestamp')
+	data_df = data_df.with_columns([
+		(pl.col('timestamp').cast(pl.Decimal(None, 9)) * 1_000_000_000).cast(pl.Int64).cast(pl.Datetime('ns')).cast(pl.Utf8).map_elements(lambda x: x[:-3], return_dtype=pl.Utf8).alias('datetime'),
+		pl.col('price').map_elements(lambda x: str(Decimal(x).quantize(Decimal(dc.PRICE_PRECISION))), return_dtype=pl.Utf8),
+		pl.col('timestamp').map_elements(lambda x: str(Decimal(x).quantize(Decimal(dc.TIMESTAMP_PRECISION))), return_dtype=pl.Utf8),
+		pl.col('tickDirection').alias('direction'),
+	])
+	data_df  = data_df.select(output_column_order)
+
+	return data_df
+
+
+def get_interval_info(data_df):
+
+	aggregated_df = pl.concat([
+		data_df.head(1).clone(),
+		data_df.tail(1).clone(),
+	], how='vertical')
+	aggregated_df = aggregated_df.with_columns([
+		(pl.col('timestamp').cast(pl.Decimal(None, 9)) * 1_000_000_000).cast(pl.Int64).cast(pl.Datetime('ns')).cast(pl.Utf8).map_elements(lambda x: x[:10], return_dtype=pl.Utf8).alias('date'),
+	])
+	min_date = aggregated_df.select(pl.col('date').first()).get_column('date').item()
+	max_date = aggregated_df.select(pl.col('date').last()).get_column('date').item()
+
+	return min_date, max_date
+
+
 def aggregate_ohlcv(df, interval, symbol):
 
 	precision_price  = Decimal(dc.PRICE_PRECISION)

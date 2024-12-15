@@ -4,8 +4,10 @@
 For ByBit exchange written in Python:
 * Tick data downloader (CSV)
 * Format converter (from CSV to Parquet)
-* Tick data joiner and preprocessor
+* Tick data preprocessor (joiner and formatter)
 * Tick data aggregator into OHLCV data
+  * in-memory (1 step)
+  * database (2 steps)
 
 # Repository
 
@@ -170,6 +172,39 @@ python bybit/aggregate_preprocessed_tick_to_ohlcv.py -s BTCUSDT ETHUSDT -i DATA/
 python bybit/aggregate_preprocessed_tick_to_ohlcv.py.py -s BTCUSDT ETHUSDT --input_directory_path DATA/2-PREPROCESSED --output_directory_path DATA/3-OHLCV
 ```
 
+## ByBit raw tick to OHLCV file in-memory aggregator
+
+```sh
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py -s BTCUSDT ETHUSDT
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py --symbols BTCUSDT ETHUSDT
+```
+
+```sh
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py -s BTCUSDT ETHUSDT -t 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d tick
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py -s BTCUSDT ETHUSDT --timeframes 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d tick
+```
+
+```sh
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py -s BTCUSDT ETHUSDT -f csv
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py -s BTCUSDT ETHUSDT -f parquet
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py -s BTCUSDT ETHUSDT --formats csv
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py -s BTCUSDT ETHUSDT --formats parquet
+```
+
+```sh
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py -s BTCUSDT ETHUSDT -e csv
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py -s BTCUSDT ETHUSDT -e parquet
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py -s BTCUSDT ETHUSDT -e csv parquet
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py -s BTCUSDT ETHUSDT --exports csv
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py -s BTCUSDT ETHUSDT --exports parquet
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py -s BTCUSDT ETHUSDT --exports csv parquet
+```
+
+```sh
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py -s BTCUSDT ETHUSDT -i DATA/2-RAW_TICK -o DATA/3-OHLCV
+python bybit/aggregate_raw_tick_to_ohlcv_in_memory.py.py -s BTCUSDT ETHUSDT --input_directory_path DATA/2-RAW_TICK --output_directory_path DATA/3-OHLCV
+```
+
 ## ByBit raw tick to OHLCV database aggregator
 
 ```sh
@@ -178,8 +213,8 @@ python bybit/aggregate_raw_tick_to_ohlcv_into_database.py --symbols BTCUSDT ETHU
 ```
 
 ```sh
-python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT -t 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d
-python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT --timeframes 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d
+python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT -t 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d tick
+python bybit/aggregate_raw_tick_to_ohlcv_into_database.py -s BTCUSDT ETHUSDT --timeframes 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d tick
 ```
 
 ```sh
@@ -207,8 +242,8 @@ python bybit/convert_duckdb_to_files.py --database_prefixes btcusdt.\*.duckdb et
 ```
 
 ```sh
-python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* -t 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d tick
-python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* --timeframes 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d tick
+python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* -t 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d
+python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* --timeframes 1s 5s 10s 15s 20s 30s 1m 5m 10m 15m 20m 30m 1h 2h 3h 4h 6h 8h 12h 1d
 ```
 
 ```sh
@@ -221,6 +256,6 @@ python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* --export
 ```
 
 ```sh
-python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* -i DATA/1-RAW_TICK -o DATA/3-OHLCV
-python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* --input_directory_path DATA/1-RAW_TICK --output_directory_path DATA/3-OHLCV
+python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* -i DATA/2-DATABASE -o DATA/3-OHLCV
+python bybit/convert_duckdb_to_files.py -p btcusdt.\*.duckdb ethusdt.\* --input_directory_path DATA/2-DATABASE --output_directory_path DATA/3-OHLCV
 ```

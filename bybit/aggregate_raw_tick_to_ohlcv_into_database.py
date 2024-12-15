@@ -21,6 +21,7 @@ import file_utils as fu
 import arg_utils as au
 import errors as e
 import domain as d
+import utils as u
 
 
 ALLOWED_TIMEFRAMES = set(['tick'] + [tf for tf in dc.OHLCV_TIMEFRAMES if d.timeframe_to_seconds(tf) <= 24*60*60])
@@ -43,18 +44,9 @@ def valid_date(s):
 		raise argparse.ArgumentTypeError(f"Invalid data: '{s}'. The correct format has: YYYY-MM-DD.")
 
 
-def read_dataframe(file_path, input_format, symbol):
+def read_dataframe(file_path, file_format, symbol):
 
-	df = None
-	if input_format == 'csv':
-		df = pl.read_csv(file_path, infer_schema=False)
-
-	elif input_format == 'parquet':
-		df = pl.read_parquet(file_path)
-
-	else:
-		raise NotImplementedError(f'Unknown format: {input_format}')
-
+	df = u.read_polars_dataframe(file_path, file_format)
 	df = df.drop(['trdMatchID', 'grossValue', 'homeNotional', 'foreignNotional'])
 	df = df.filter(pl.col('symbol') == symbol)
 	df = df.sort('timestamp')
@@ -67,32 +59,6 @@ def read_dataframe(file_path, input_format, symbol):
 	df  = df.select(OUTPUT_COLUMN_ORDER)
 
 	return df
-
-
-def aggregate_ohlcv(df, interval, symbol):
-
-	precision_price  = Decimal(dc.PRICE_PRECISION)
-	precision_volume = Decimal(dc.VOLUME_PRECISION)
-
-	df_aggr = df.sort('datetime')
-	df_aggr = df.with_columns(
-		pl.col("datetime").str.strptime(pl.Datetime).dt.truncate(interval).alias("datetime"),
-        pl.col("price").cast(pl.Float64),
-        pl.col("size").cast(pl.Float64),
-	)
-	df_aggr = df_aggr.group_by("datetime").agg([
-		pl.col("price").first().map_elements(lambda x: str(Decimal(x).quantize(precision_price)), return_dtype=pl.Utf8).alias("open"),
-		pl.col("price").max().map_elements(lambda x: str(Decimal(x).quantize(precision_price)), return_dtype=pl.Utf8).alias("high"),
-		pl.col("price").min().map_elements(lambda x: str(Decimal(x).quantize(precision_price)), return_dtype=pl.Utf8).alias("low"),
-		pl.col("price").last().map_elements(lambda x: str(Decimal(x).quantize(precision_price)), return_dtype=pl.Utf8).alias("close"),
-		pl.col("size").sum().map_elements(lambda x: str(Decimal(x).quantize(precision_volume)), return_dtype=pl.Utf8).alias("volume"),
-	])
-	df_aggr = df_aggr.sort('datetime')
-	df_aggr = df_aggr.with_columns(
-		pl.col("datetime").dt.strftime("%Y-%m-%d %H:%M:%S").alias("datetime")
-	)
-
-	return df_aggr
 
 
 def handle_timeframe_args(args):
@@ -267,7 +233,7 @@ def main():
 				db_conn.unregister('ticks_df')
 
 			for aggr_timeframe in ohlcv_names:
-				aggr_df = aggregate_ohlcv(ticks_df, aggr_timeframe, symbol)
+				aggr_df = u.aggregate_ohlcv(ticks_df, aggr_timeframe, symbol)
 
 				db_conn.register('aggr_df', aggr_df.to_arrow())
 				db_conn.execute(f"""

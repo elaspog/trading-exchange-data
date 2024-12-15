@@ -18,51 +18,10 @@ import data_config as dc
 import file_utils as fu
 import arg_utils as au
 import errors as e
+import utils as u
 
 
 ALLOWED_TIMEFRAMES  = ['tick'] + dc.OHLCV_TIMEFRAMES
-
-
-def aggregate_ohlcv(df, interval, symbol):
-
-	precision_price  = Decimal(dc.PRICE_PRECISION)
-	precision_volume = Decimal(dc.VOLUME_PRECISION)
-
-	df_aggr = df.sort('datetime')
-	df_aggr = df.with_columns(
-		pl.col("datetime").str.strptime(pl.Datetime).dt.truncate(interval).alias("datetime"),
-        pl.col("price").cast(pl.Float64),
-        pl.col("size").cast(pl.Float64),
-	)
-	df_aggr = df_aggr.group_by("datetime").agg([
-		pl.col("price").first().map_elements(lambda x: str(Decimal(x).quantize(precision_price)), return_dtype=pl.Utf8).alias("open"),
-		pl.col("price").max().map_elements(lambda x: str(Decimal(x).quantize(precision_price)), return_dtype=pl.Utf8).alias("high"),
-		pl.col("price").min().map_elements(lambda x: str(Decimal(x).quantize(precision_price)), return_dtype=pl.Utf8).alias("low"),
-		pl.col("price").last().map_elements(lambda x: str(Decimal(x).quantize(precision_price)), return_dtype=pl.Utf8).alias("close"),
-		pl.col("size").sum().map_elements(lambda x: str(Decimal(x).quantize(precision_volume)), return_dtype=pl.Utf8).alias("volume"),
-	])
-	df_aggr = df_aggr.sort('datetime')
-	df_aggr = df_aggr.with_columns(
-		pl.col("datetime").dt.strftime("%Y-%m-%d %H:%M:%S").alias("datetime")
-	)
-
-	return df_aggr
-
-
-def read_dataframe(input_file_name):
-
-	input_file_extension = input_file_name.split('.')[-1]
-	df = None
-	if input_file_extension == 'csv':
-		df = pl.read_csv(input_file_name, infer_schema=False)
-
-	elif input_file_extension == 'parquet':
-		df = pl.read_parquet(input_file_name)
-
-	else:
-		raise NotImplementedError(f'Unknown format: {input_file_extension}')
-
-	return df
 
 
 def main():
@@ -152,10 +111,10 @@ def main():
 
 		fu.create_local_folder(process_detail['outdir_path'])
 
-		ticks_df = read_dataframe(process_detail['input_file'])
+		ticks_df = u.read_polars_dataframe(process_detail['input_file'], input_file_name.split('.')[-1])
 		for aggr_timeframe in [tf for tf in timeframes if tf != 'tick']:
 
-			aggr_df = aggregate_ohlcv(ticks_df, aggr_timeframe, symbol)
+			aggr_df = u.aggregate_ohlcv(ticks_df, aggr_timeframe, symbol)
 			print(f'\tDimensions of {aggr_timeframe:>4}: {aggr_df.shape}')
 
 			file_name_base = os.path.join(process_detail['outdir_path'], f'{process_detail["subdir_name"]}.{aggr_timeframe}')

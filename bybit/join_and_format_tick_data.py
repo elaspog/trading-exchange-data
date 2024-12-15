@@ -18,6 +18,7 @@ import data_config as dc
 import file_utils as fu
 import arg_utils as au
 import errors as e
+import utils as u
 
 
 OUTPUT_COLUMN_ORDER = [
@@ -35,13 +36,7 @@ def process_dataframes(file_paths, symbol, file_format):
 	dfs = []
 	for idx, file_path in enumerate(file_paths):
 
-		if file_format == 'csv':
-			df = pl.read_csv(file_path, infer_schema=False)
-		elif file_format == 'parquet':
-			df = pl.read_parquet(file_path, memory_map=True)
-		else:
-			raise NotImplementedError(f'Unknown format: {file_format}')
-
+		df = u.read_polars_dataframe(file_path, file_format)
 		df = df.drop(['trdMatchID', 'grossValue', 'homeNotional', 'foreignNotional'])
 		df = df.filter(pl.col('symbol') == symbol)
 		df = df.reverse()

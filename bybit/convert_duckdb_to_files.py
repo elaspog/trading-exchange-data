@@ -8,7 +8,7 @@ import duckdb
 import argparse
 import polars as pl
 
-REPO_ROOT_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+REPO_ROOT_DIRECTORY_PATH = os.path.commonpath([os.getcwd(), os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))])
 LIBRARIES_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../libs/python'))
 
 sys.path.append(REPO_ROOT_DIRECTORY_PATH)

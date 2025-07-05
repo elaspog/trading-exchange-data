@@ -18,28 +18,29 @@ LIBRARIES_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__
 sys.path.append(REPO_ROOT_DIRECTORY_PATH)
 sys.path.append(LIBRARIES_DIRECTORY_PATH)
 
-BASE_URL = 'https://public.bybit.com/trading/'
-TEMPLATE = '{symbol}/{symbol}{date}'
-EXTENSION = '.csv.gz'
-
 import data_config as dc
 import file_utils as fu
 
 
+BASE_URL     = 'https://public.bybit.com/trading/'
+TEMPLATE     = '{symbol}/{symbol}{date}'
+EXTENSION    = '.csv.gz'
+DATE_PATTERN = r'\d{4}-\d{2}-\d{2}'
+
+
 def get_csv_details(url):
-	date_pattern = r'\d{4}-\d{2}-\d{2}'
 	dir_response = requests.get(url)
 	dir_soup     = BeautifulSoup(dir_response.text, 'html.parser')
 	csvgz_urls   = dir_soup.find_all(href=re.compile('.csv.gz$'))
 	return [{
-		'date' : (hit.group(0) if (hit := re.search(date_pattern, link.text)) else None),
+		'date' : (hit.group(0) if (hit := re.search(DATE_PATTERN, link.text)) else None),
 		'file' : link.text,
 		'url'  : f'{url}{link.get("href")}',
 	} for link in csvgz_urls]
 
 
 def get_formatted_csv_file_path(csvgz_file_path):
-	csv_date           = re.findall(r'\d{4}-\d{2}-\d{2}', csvgz_file_path)[0]
+	csv_date           = re.findall(DATE_PATTERN, csvgz_file_path)[0]
 	csv_file_path_base = csvgz_file_path[:csvgz_file_path.rfind(csv_date)]
 	return f'{csv_file_path_base}.{csv_date}.csv'
 
@@ -104,6 +105,10 @@ def main():
 		action = 'store_true',
 		help   = 'Backfill hidden',
 	)
+	parser.add_argument('-i', '--ignore_downloads_by_directory',
+		type = str,
+		help = 'Skips downloads by the dates of file names from the specified directory <TICKER>.<YYYY-MM-DD>.<format>.',
+	)
 
 	args     = parser.parse_args()
 	response = requests.get(BASE_URL)
@@ -117,22 +122,42 @@ def main():
 	if symbols:
 		fu.create_local_folder(args.output_directory_path)
 
-	for symbol_idx, symbol in enumerate(symbols):
-		print(f'[{symbol_idx+1}/{len(symbols)}] Processing: {symbol}')
+	for symbol_idx, symbol in enumerate(symbols, start=1):
+
+		dates_to_skip = set()
+		if args.ignore_downloads_by_directory:
+
+			skipping_directory = os.path.join(args.ignore_downloads_by_directory, symbol)
+			if not os.path.isdir(skipping_directory):
+				print('Directory not found:', skipping_directory)
+				return
+
+			dates_to_skip = {f.split('.')[1] for f in os.listdir(skipping_directory) if f.split('.')[0] == symbol}
+
+		details  = get_csv_details(BASE_URL + symbol + '/')
+		online   = len(details)
+		offline  = len(dates_to_skip)
+		min_date = min({d['date'] for d in details})
+		max_date = max({d['date'] for d in details})
+		details  = [d for d in details if d['date'] not in dates_to_skip]
+
+		print(f'[{symbol_idx}/{len(symbols)}] Processing: {symbol}\n\tOnline  : {online} files [{min_date}...{max_date}]\n\tOffline : {offline} files')
+
+		if online == offline:
+			print('\tDone.')
+			continue
 
 		symbol_folder_path  = os.path.join(args.output_directory_path, symbol)
 		fu.create_local_folder(symbol_folder_path)
 
-		details = get_csv_details(BASE_URL + symbol + '/')
-		for file_idx, detail in enumerate(reversed(details)):
-			print(f'\t[{file_idx+1}/{len(details)}] ', end='')
+		for file_idx, detail in enumerate(details, start=1):
+			print(f'\t[{file_idx}/{len(details)}] ', end='')
 			handle_download(symbol_folder_path, detail['file'], detail['url'])
 
 		if not args.backfill:
 			continue
 
-		tolerance  = 10
-		min_date   = min({d['date'] for d in details})
+		tolerance = 10
 		for hidden_date in get_prev_day(min_date):
 			if tolerance <= 0:
 				break
@@ -146,5 +171,5 @@ def main():
 				tolerance -= 1
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 	main()

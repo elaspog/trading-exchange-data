@@ -140,6 +140,7 @@ def main():
 		min_date = min({d['date'] for d in details})
 		max_date = max({d['date'] for d in details})
 		details  = [d for d in details if d['date'] not in dates_to_skip]
+		details.sort(key=lambda x: x['date'], reverse=True)
 
 		print(f'[{symbol_idx}/{len(symbols)}] Processing: {symbol}\n\tOnline  : {online} files [{min_date}...{max_date}]\n\tOffline : {offline} files')
 

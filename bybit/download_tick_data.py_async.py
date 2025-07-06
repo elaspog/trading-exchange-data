@@ -98,6 +98,11 @@ async def main():
 		type = str,
 		help = 'Skips downloads by the dates of file names from the specified directory <TICKER>.<YYYY-MM-DD>.<format>.',
 	)
+	parser.add_argument('-c', '--concurrency',
+		type    = int,
+		default = 5,
+		help    = 'Max concurrent downloads',
+	)
 
 	args     = parser.parse_args()
 	response = requests.get(BASE_URL)
@@ -129,6 +134,7 @@ async def main():
 		min_date = min({d['date'] for d in details})
 		max_date = max({d['date'] for d in details})
 		details  = [d for d in details if d['date'] not in dates_to_skip]
+		details.sort(key=lambda x: x['date'], reverse=True)
 
 		print(f'[{symbol_idx}/{len(symbols)}] Processing: {symbol}\n\tOnline  : {online} files [{min_date}...{max_date}]\n\tOffline : {offline} files')
 
@@ -139,7 +145,7 @@ async def main():
 		symbol_folder_path  = os.path.join(args.output_directory_path, symbol)
 		fu.create_local_folder(symbol_folder_path)
 
-		semaphore = asyncio.Semaphore(10)
+		semaphore = asyncio.Semaphore(args.concurrency)
 		async with ClientSession() as session:
 			tasks = []
 			for file_idx, detail in enumerate(details, start=1):
